@@ -179,20 +179,20 @@ function makeRenderer(canvas, ctx, state) {
     },
 
     drawPlayerBattleHud() {
-      roundRect(ctx, 25, 690, 340, 42, 12);
+      roundRect(ctx, 25, 468, 238, 36, 12);
       ctx.fillStyle = "rgba(26,18,13,0.82)";
       ctx.fill();
       ctx.strokeStyle = "#8d6a37";
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      drawText(ctx, "少侠", 48, 711, 14, "#fff3c4");
+      drawText(ctx, "少侠", 47, 486, 13, "#fff3c4");
       ctx.fillStyle = "#3b1b13";
-      ctx.fillRect(92, 702, 150, 14);
+      ctx.fillRect(86, 479, 112, 12);
       ctx.fillStyle = "#e44f2f";
-      ctx.fillRect(92, 702, Math.max(0, 150 * state.player.hp / state.player.maxHp), 14);
-      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 167, 709, 10, "#fff", "center");
-      drawText(ctx, `护甲 ${state.player.block}`, 272, 711, 13, "#bfe1ff", "center");
-      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 336, 711, 13, "#b6e889", "center");
+      ctx.fillRect(86, 479, Math.max(0, 112 * state.player.hp / state.player.maxHp), 12);
+      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 142, 485, 9, "#fff", "center");
+      drawText(ctx, `甲 ${state.player.block}`, 224, 486, 12, "#bfe1ff", "center");
+      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 251, 486, 12, "#b6e889", "center");
     },
 
     drawFighters() {
@@ -224,7 +224,7 @@ function makeRenderer(canvas, ctx, state) {
       selected.forEach((card, index) => {
         this.addHit({ x: 28 + index * 44, y: 518, w: 38, h: 50 }, "unselectCard", card.uid);
       });
-      const castBox = { x: 286, y: 464, w: 76, h: 42 };
+      const castBox = { x: 286, y: 456, w: 76, h: 42 };
       drawButton(ctx, castBox, "出招", Boolean(move));
       this.addHit(castBox, "castMove");
     },
