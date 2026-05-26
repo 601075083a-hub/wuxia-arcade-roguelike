@@ -1,12 +1,12 @@
 const BATTLE_ASSETS = {
-  battleBackground: "assets/battle/background.svg",
-  player: "assets/battle/player.svg",
-  enemy: "assets/battle/enemy.svg",
-  cardDirection: "assets/battle/card-direction.svg",
-  cardPunch: "assets/battle/card-punch.svg",
-  cardKick: "assets/battle/card-kick.svg",
-  panel: "assets/battle/panel.svg",
-  controlBar: "assets/battle/control-bar.svg"
+  battleBackground: "assets/battle/png/background.png",
+  player: "assets/battle/png/player.png",
+  enemy: "assets/battle/png/enemy.png",
+  cardDirection: "assets/battle/png/card-direction.png",
+  cardPunch: "assets/battle/png/card-punch.png",
+  cardKick: "assets/battle/png/card-kick.png",
+  panel: "assets/battle/png/panel.png",
+  controlBar: "assets/battle/png/control-bar.png"
 };
 
 class AssetLoader {
