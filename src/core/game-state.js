@@ -190,10 +190,38 @@ class GameState {
   getCurrentMove() {
     const input = this.getSelectedInput();
     if (input.length === 0) return null;
-    return this.getUnlockedMoves().find((move) => {
+    const matched = this.getUnlockedMoves().find((move) => {
       if (move.input.length !== input.length) return false;
       return move.input.every((id, index) => id === input[index]);
-    }) || null;
+    });
+    if (matched) return matched;
+    return this.getBasicFallbackMove(input);
+  }
+
+  getBasicFallbackMove(input) {
+    if (input.includes("punch")) {
+      return {
+        id: "basic_punch",
+        name: "普通拳",
+        input,
+        tags: ["punch", "basic"],
+        baseDamage: 5,
+        effects: [{ type: "damage", value: 5 }],
+        fallback: true
+      };
+    }
+    if (input.includes("kick")) {
+      return {
+        id: "basic_kick",
+        name: "普通腿",
+        input,
+        tags: ["kick", "basic"],
+        baseDamage: 6,
+        effects: [{ type: "damage", value: 6 }],
+        fallback: true
+      };
+    }
+    return null;
   }
 
   estimateDamage(move) {
@@ -220,7 +248,7 @@ class GameState {
     if (!card || this.battle.selected.includes(card)) return;
     this.battle.selected.push(card);
     const move = this.getCurrentMove();
-    this.message = move ? `${move.name} 可出招，预计 ${this.estimateDamage(move)} 伤害。` : "继续排列碎片寻找招式。";
+    this.message = move ? `${move.name} 可出招，预计 ${this.estimateDamage(move)} 伤害。` : "只有方向无法出招，需要加入拳或腿。";
   }
 
   unselectCard(uid) {
@@ -239,7 +267,7 @@ class GameState {
     if (!this.battle || this.battle.actionsLeft <= 0) return;
     const move = this.getCurrentMove();
     if (!move) {
-      this.message = "当前序列没有命中招式。";
+      this.message = "只有方向无法出招，需要加入拳或腿。";
       return;
     }
 

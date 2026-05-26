@@ -142,6 +142,7 @@ function makeRenderer(canvas, ctx, state) {
       const enemy = battle.enemy;
       this.drawBattleBackdrop();
       this.drawEnemy(enemy);
+      this.drawPlayerBattleHud();
       this.drawFighters();
       this.drawComboPanel();
       this.drawHand();
@@ -175,6 +176,23 @@ function makeRenderer(canvas, ctx, state) {
       const intent = enemy.intents[enemy.intentIndex % enemy.intents.length];
       drawText(ctx, intent.label, 334, 61, 12, "#ffd36b", "right");
       if (enemy.block > 0) drawText(ctx, `盾 ${enemy.block}`, 334, 82, 12, "#bfe1ff", "right");
+    },
+
+    drawPlayerBattleHud() {
+      roundRect(ctx, 25, 690, 340, 42, 12);
+      ctx.fillStyle = "rgba(26,18,13,0.82)";
+      ctx.fill();
+      ctx.strokeStyle = "#8d6a37";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawText(ctx, "少侠", 48, 711, 14, "#fff3c4");
+      ctx.fillStyle = "#3b1b13";
+      ctx.fillRect(92, 702, 150, 14);
+      ctx.fillStyle = "#e44f2f";
+      ctx.fillRect(92, 702, Math.max(0, 150 * state.player.hp / state.player.maxHp), 14);
+      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 167, 709, 10, "#fff", "center");
+      drawText(ctx, `护甲 ${state.player.block}`, 272, 711, 13, "#bfe1ff", "center");
+      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 336, 711, 13, "#b6e889", "center");
     },
 
     drawFighters() {
@@ -244,14 +262,12 @@ function makeRenderer(canvas, ctx, state) {
         const internal = state.internalMap[id];
         drawText(ctx, internal.name.slice(0, 3), 54 + index * 64, 814, 12, "#fff3c4", "center");
       });
-      for (let i = 0; i < 3; i += 1) {
-        ctx.beginPath();
-        ctx.arc(184 + i * 36, 784, 13, 0, Math.PI * 2);
-        ctx.fillStyle = i < battle.actionsLeft ? "#ffd45e" : "#3a2b1f";
-        ctx.fill();
-        ctx.strokeStyle = "#9a6d32";
-        ctx.stroke();
-      }
+      roundRect(ctx, 146, 764, 82, 32, 12);
+      ctx.fillStyle = "#2a1d14";
+      ctx.fill();
+      ctx.strokeStyle = "#b88945";
+      ctx.stroke();
+      drawText(ctx, `出招 ${battle.actionsLeft}/3`, 187, 780, 14, "#ffd45e", "center");
       const clearBox = { x: 246, y: 758, w: 52, h: 38 };
       const endBox = { x: 306, y: 758, w: 66, h: 38 };
       drawButton(ctx, clearBox, "清空", true);
