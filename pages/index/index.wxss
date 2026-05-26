@@ -10,3 +10,16 @@ page {
   height: 100vh;
   display: block;
 }
+
+.error-panel {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  top: 180rpx;
+  padding: 24rpx;
+  color: #f5ddb0;
+  background: #1d1510;
+  border: 2rpx solid #b88945;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}

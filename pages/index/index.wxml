@@ -4,3 +4,4 @@
   class="game-canvas"
   bindtouchstart="onTouchStart"
 />
+<view wx:if="{{error}}" class="error-panel">{{error}}</view>

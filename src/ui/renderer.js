@@ -41,8 +41,13 @@ function makeRenderer(canvas, ctx, state) {
     offsetY: 0,
     hits: [],
 
-    resize() {
-      const info = typeof wx !== "undefined" && wx.getSystemInfoSync ? wx.getSystemInfoSync() : { windowWidth: DESIGN_WIDTH, windowHeight: DESIGN_HEIGHT, pixelRatio: 1 };
+    resize(viewport) {
+      const sys = typeof wx !== "undefined" && wx.getSystemInfoSync ? wx.getSystemInfoSync() : { windowWidth: DESIGN_WIDTH, windowHeight: DESIGN_HEIGHT, pixelRatio: 1 };
+      const info = {
+        windowWidth: viewport && viewport.width ? viewport.width : sys.windowWidth,
+        windowHeight: viewport && viewport.height ? viewport.height : sys.windowHeight,
+        pixelRatio: sys.pixelRatio || 1
+      };
       const dpr = info.pixelRatio || 1;
       canvas.width = info.windowWidth * dpr;
       canvas.height = info.windowHeight * dpr;
@@ -51,7 +56,12 @@ function makeRenderer(canvas, ctx, state) {
       this.scale = Math.min(info.windowWidth / DESIGN_WIDTH, info.windowHeight / DESIGN_HEIGHT);
       this.offsetX = (info.windowWidth - DESIGN_WIDTH * this.scale) / 2;
       this.offsetY = (info.windowHeight - DESIGN_HEIGHT * this.scale) / 2;
-      ctx.setTransform(dpr * this.scale, 0, 0, dpr * this.scale, dpr * this.offsetX, dpr * this.offsetY);
+      if (ctx.setTransform) {
+        ctx.setTransform(dpr * this.scale, 0, 0, dpr * this.scale, dpr * this.offsetX, dpr * this.offsetY);
+      } else {
+        ctx.scale(dpr * this.scale, dpr * this.scale);
+        ctx.translate(this.offsetX / this.scale, this.offsetY / this.scale);
+      }
     },
 
     toDesignPoint(x, y) {

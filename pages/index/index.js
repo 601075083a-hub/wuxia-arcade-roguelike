@@ -1,23 +1,36 @@
 const { WuxiaGame } = require("../../src/app");
 
 Page({
-  data: {},
+  data: {
+    error: ""
+  },
 
   onReady() {
-    const query = wx.createSelectorQuery();
+    const query = this.createSelectorQuery();
     query
       .select("#gameCanvas")
       .fields({ node: true, size: true })
       .exec((res) => {
-        const canvasInfo = res && res[0];
-        if (!canvasInfo || !canvasInfo.node) {
-          console.error("Canvas node not found.");
-          return;
+        try {
+          const canvasInfo = res && res[0];
+          if (!canvasInfo || !canvasInfo.node) {
+            this.setData({ error: "Canvas 初始化失败：未找到 gameCanvas 节点。" });
+            return;
+          }
+          const canvas = canvasInfo.node;
+          const ctx = canvas.getContext("2d");
+          this.game = new WuxiaGame(canvas, ctx, {
+            bindInput: false,
+            viewport: {
+              width: canvasInfo.width,
+              height: canvasInfo.height
+            }
+          });
+          this.game.start();
+        } catch (error) {
+          console.error(error);
+          this.setData({ error: `启动失败：${error.message || error}` });
         }
-        const canvas = canvasInfo.node;
-        const ctx = canvas.getContext("2d");
-        this.game = new WuxiaGame(canvas, ctx, { bindInput: false });
-        this.game.start();
       });
   },
 

@@ -11,7 +11,7 @@ class WuxiaGame {
     this.running = false;
     this.lastTime = 0;
     if (this.options.bindInput !== false) this.bindInput();
-    this.renderer.resize();
+    this.renderer.resize(this.options.viewport);
   }
 
   start() {
@@ -23,9 +23,11 @@ class WuxiaGame {
   loop(time) {
     this.lastTime = time;
     this.renderer.render();
-    const requestFrame = typeof requestAnimationFrame !== "undefined"
-      ? requestAnimationFrame
-      : (callback) => setTimeout(() => callback(Date.now()), 1000 / 30);
+    const requestFrame = this.canvas && this.canvas.requestAnimationFrame
+      ? this.canvas.requestAnimationFrame.bind(this.canvas)
+      : typeof requestAnimationFrame !== "undefined"
+        ? requestAnimationFrame
+        : (callback) => setTimeout(() => callback(Date.now()), 1000 / 30);
     requestFrame((nextTime) => this.loop(nextTime));
   }
 
