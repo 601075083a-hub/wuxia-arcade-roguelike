@@ -1,0 +1,11 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#1d1510"
+  },
+  "style": "v2",
+  "renderer": "webview"
+}

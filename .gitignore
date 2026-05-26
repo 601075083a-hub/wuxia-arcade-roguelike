@@ -23,6 +23,7 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+project.private.config.json
 
 # Temporary files
 *.tmp

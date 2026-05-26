@@ -2,14 +2,15 @@ const { GameState } = require("./core/game-state");
 const { makeRenderer } = require("./ui/renderer");
 
 class WuxiaGame {
-  constructor(canvas, ctx) {
+  constructor(canvas, ctx, options) {
+    this.options = options || {};
     this.canvas = canvas;
     this.ctx = ctx;
     this.state = new GameState();
     this.renderer = makeRenderer(canvas, ctx, this.state);
     this.running = false;
     this.lastTime = 0;
-    this.bindInput();
+    if (this.options.bindInput !== false) this.bindInput();
     this.renderer.resize();
   }
 
@@ -29,23 +30,23 @@ class WuxiaGame {
   }
 
   bindInput() {
-    const onTouch = (x, y) => {
-      const hit = this.renderer.hitTest(x, y);
-      if (!hit) return;
-      this.dispatch(hit.action, hit.payload);
-      this.renderer.render();
-    };
-
     if (typeof wx !== "undefined" && wx.onTouchStart) {
       wx.onTouchStart((event) => {
         const touch = event.touches && event.touches[0];
-        if (touch) onTouch(touch.clientX, touch.clientY);
+        if (touch) this.handleTouch(touch.clientX, touch.clientY);
       });
     } else if (this.canvas && this.canvas.addEventListener) {
       this.canvas.addEventListener("click", (event) => {
-        onTouch(event.clientX, event.clientY);
+        this.handleTouch(event.clientX, event.clientY);
       });
     }
+  }
+
+  handleTouch(x, y) {
+    const hit = this.renderer.hitTest(x, y);
+    if (!hit) return;
+    this.dispatch(hit.action, hit.payload);
+    this.renderer.render();
   }
 
   dispatch(action, payload) {

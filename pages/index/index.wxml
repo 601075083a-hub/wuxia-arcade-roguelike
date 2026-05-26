@@ -1,0 +1,6 @@
+<canvas
+  id="gameCanvas"
+  type="2d"
+  class="game-canvas"
+  bindtouchstart="onTouchStart"
+/>
