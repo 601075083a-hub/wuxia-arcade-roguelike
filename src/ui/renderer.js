@@ -235,9 +235,8 @@ function makeRenderer(canvas, ctx, state, assets) {
       const battle = state.battle;
       const enemy = battle.enemy;
       this.drawBattleBackdrop();
-      this.drawEnemy(enemy);
-      this.drawPlayerBattleHud();
       this.drawFighters();
+      this.drawEnemyBattleHud(enemy);
       this.drawComboPanel();
       this.drawHand();
       this.drawBottomBar();
@@ -259,38 +258,38 @@ function makeRenderer(canvas, ctx, state, assets) {
       ctx.stroke();
     },
 
-    drawEnemy(enemy) {
-      roundRect(ctx, 22, 34, 346, 58, 18);
+    drawEnemyBattleHud(enemy) {
+      roundRect(ctx, 22, 40, 250, 58, 18);
       ctx.fillStyle = "rgba(32,22,17,0.9)";
       ctx.fill();
       ctx.strokeStyle = "#a9773c";
       ctx.stroke();
-      drawText(ctx, enemy.name, 56, 53, 16, "#fff3c4");
+      drawText(ctx, enemy.name, 46, 56, 15, "#fff3c4");
       ctx.fillStyle = "#3b1b13";
-      ctx.fillRect(116, 50, 190, 16);
+      ctx.fillRect(102, 51, 118, 12);
       ctx.fillStyle = "#e44f2f";
-      ctx.fillRect(116, 50, Math.max(0, 190 * enemy.hp / enemy.maxHp), 16);
-      drawText(ctx, `${enemy.hp}/${enemy.maxHp}`, 211, 58, 11, "#fff", "center");
+      ctx.fillRect(102, 51, Math.max(0, 118 * enemy.hp / enemy.maxHp), 12);
+      drawText(ctx, `${enemy.hp}/${enemy.maxHp}`, 161, 57, 9, "#fff", "center");
       const intent = enemy.intents[enemy.intentIndex % enemy.intents.length];
-      drawText(ctx, intent.label, 334, 61, 12, "#ffd36b", "right");
-      if (enemy.block > 0) drawText(ctx, `盾 ${enemy.block}`, 334, 82, 12, "#bfe1ff", "right");
+      drawText(ctx, intent.label, 46, 82, 12, "#ffd36b");
+      drawText(ctx, enemy.block > 0 ? `盾 ${enemy.block}` : "无盾", 220, 82, 12, "#bfe1ff", "right");
     },
 
-    drawPlayerBattleHud() {
-      roundRect(ctx, 25, 468, 238, 36, 12);
+    drawPlayerBottomHud() {
+      roundRect(ctx, 16, 704, 210, 34, 12);
       ctx.fillStyle = "rgba(26,18,13,0.82)";
       ctx.fill();
       ctx.strokeStyle = "#8d6a37";
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      drawText(ctx, "少侠", 47, 486, 13, "#fff3c4");
+      drawText(ctx, "少侠", 36, 721, 12, "#fff3c4");
       ctx.fillStyle = "#3b1b13";
-      ctx.fillRect(86, 479, 112, 12);
+      ctx.fillRect(76, 715, 94, 11);
       ctx.fillStyle = "#e44f2f";
-      ctx.fillRect(86, 479, Math.max(0, 112 * state.player.hp / state.player.maxHp), 12);
-      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 142, 485, 9, "#fff", "center");
-      drawText(ctx, `甲 ${state.player.block}`, 224, 486, 12, "#bfe1ff", "center");
-      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 251, 486, 12, "#b6e889", "center");
+      ctx.fillRect(76, 715, Math.max(0, 94 * state.player.hp / state.player.maxHp), 11);
+      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 123, 720, 8, "#fff", "center");
+      drawText(ctx, `甲 ${state.player.block}`, 198, 721, 11, "#bfe1ff", "center");
+      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 198, 733, 10, "#b6e889", "center");
     },
 
     drawFighters() {
@@ -469,19 +468,20 @@ function makeRenderer(canvas, ctx, state, assets) {
         ctx.fillStyle = "rgba(28,18,12,0.96)";
         ctx.fill();
       }
+      this.drawPlayerBottomHud();
       drawText(ctx, "内功", 34, 774, 13, "#ccb47f", "center");
       state.player.internals.slice(0, 2).forEach((id, index) => {
         const internal = state.internalMap[id];
         drawText(ctx, internal.name.slice(0, 3), 54 + index * 64, 814, 12, "#fff3c4", "center");
       });
-      roundRect(ctx, 146, 764, 82, 32, 12);
+      roundRect(ctx, 150, 758, 78, 30, 12);
       ctx.fillStyle = "#2a1d14";
       ctx.fill();
       ctx.strokeStyle = "#b88945";
       ctx.stroke();
-      drawText(ctx, `出招 ${battle.actionsLeft}/3`, 187, 780, 14, "#ffd45e", "center");
-      const clearBox = { x: 246, y: 758, w: 52, h: 38 };
-      const endBox = { x: 306, y: 758, w: 66, h: 38 };
+      drawText(ctx, `出招 ${battle.actionsLeft}/3`, 189, 773, 13, "#ffd45e", "center");
+      const clearBox = { x: 242, y: 756, w: 54, h: 38 };
+      const endBox = { x: 306, y: 756, w: 62, h: 38 };
       drawButton(ctx, clearBox, "清空", true);
       drawButton(ctx, endBox, "回合", true);
       this.addHit(clearBox, "clearSelection");
@@ -554,10 +554,12 @@ function makeRenderer(canvas, ctx, state, assets) {
     },
 
     drawMessage() {
-      roundRect(ctx, 18, 92, 354, 34, 12);
+      const battleMode = state.scene === "battle";
+      const box = battleMode ? { x: 28, y: 474, w: 238, h: 28 } : { x: 18, y: 92, w: 354, h: 34 };
+      roundRect(ctx, box.x, box.y, box.w, box.h, 12);
       ctx.fillStyle = "rgba(26,18,13,0.68)";
       ctx.fill();
-      drawText(ctx, state.message, DESIGN_WIDTH / 2, 109, 13, "#f5ddb0", "center");
+      drawText(ctx, state.message, box.x + box.w / 2, box.y + box.h / 2, battleMode ? 11 : 13, "#f5ddb0", "center");
     }
   };
 
