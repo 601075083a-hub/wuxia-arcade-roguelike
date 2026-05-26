@@ -32,7 +32,7 @@ function drawButton(ctx, box, label, enabled) {
   drawText(ctx, label, box.x + box.w / 2, box.y + box.h / 2, 17, enabled === false ? "#9c8c7a" : "#22150d", "center");
 }
 
-function makeRenderer(canvas, ctx, state) {
+function makeRenderer(canvas, ctx, state, assets) {
   const renderer = {
     width: DESIGN_WIDTH,
     height: DESIGN_HEIGHT,
@@ -89,6 +89,11 @@ function makeRenderer(canvas, ctx, state) {
     clear() {
       this.hits = [];
       ctx.clearRect(-this.offsetX / this.scale, -this.offsetY / this.scale, canvas.width / this.scale, canvas.height / this.scale);
+      if (state.scene === "battle" && this.drawAsset("battleBackground", 0, 0, DESIGN_WIDTH, DESIGN_HEIGHT)) return;
+      if (state.scene === "battle") {
+        this.drawPaintedBattleBackground();
+        return;
+      }
       const gradient = ctx.createLinearGradient(0, 0, 0, DESIGN_HEIGHT);
       gradient.addColorStop(0, "#d9e6ef");
       gradient.addColorStop(0.48, "#8fa18f");
@@ -96,6 +101,85 @@ function makeRenderer(canvas, ctx, state) {
       gradient.addColorStop(1, "#1d1510");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+    },
+
+    drawPaintedBattleBackground() {
+      const sky = ctx.createLinearGradient(0, 0, 0, DESIGN_HEIGHT);
+      sky.addColorStop(0, "#dcebf2");
+      sky.addColorStop(0.36, "#a8bab0");
+      sky.addColorStop(0.54, "#6c7e68");
+      sky.addColorStop(0.55, "#4b3323");
+      sky.addColorStop(1, "#1b100b");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+
+      const glow = ctx.createRadialGradient(106, 112, 12, 106, 112, 240);
+      glow.addColorStop(0, "rgba(255,245,200,0.82)");
+      glow.addColorStop(1, "rgba(255,245,200,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, DESIGN_WIDTH, 360);
+
+      ctx.fillStyle = "rgba(69,83,78,0.45)";
+      ctx.beginPath();
+      ctx.moveTo(-40, 312);
+      ctx.bezierCurveTo(60, 150, 132, 116, 186, 306);
+      ctx.bezierCurveTo(252, 86, 322, 108, 430, 312);
+      ctx.lineTo(430, 460);
+      ctx.lineTo(-40, 460);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(49,69,61,0.35)";
+      ctx.beginPath();
+      ctx.moveTo(50, 354);
+      ctx.bezierCurveTo(120, 288, 176, 276, 230, 354);
+      ctx.bezierCurveTo(282, 246, 336, 274, 420, 354);
+      ctx.lineTo(420, 472);
+      ctx.lineTo(50, 472);
+      ctx.closePath();
+      ctx.fill();
+
+      const stone = ctx.createLinearGradient(0, 324, 0, 520);
+      stone.addColorStop(0, "#b5a98f");
+      stone.addColorStop(1, "#4a3728");
+      ctx.fillStyle = stone;
+      ctx.beginPath();
+      ctx.ellipse(195, 374, 164, 48, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.beginPath();
+      ctx.ellipse(195, 360, 154, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(26,15,10,0.84)";
+      ctx.fillRect(0, 386, DESIGN_WIDTH, 458);
+
+      ctx.strokeStyle = "rgba(243,211,116,0.55)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(195, 410, 138, Math.PI * 0.08, Math.PI * 1.86);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(242,188,85,0.72)";
+      [[64, 198, -0.7], [324, 168, 0.8], [306, 310, 1.2]].forEach((leaf) => {
+        ctx.save();
+        ctx.translate(leaf[0], leaf[1]);
+        ctx.rotate(leaf[2]);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 4, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    },
+
+    drawAsset(key, x, y, w, h) {
+      const image = assets && assets.get ? assets.get(key) : null;
+      if (!image) return false;
+      try {
+        ctx.drawImage(image, x, y, w, h);
+        return true;
+      } catch (error) {
+        return false;
+      }
     },
 
     render() {
@@ -160,6 +244,10 @@ function makeRenderer(canvas, ctx, state) {
     },
 
     drawBattleBackdrop() {
+      if (assets && assets.get && assets.get("battleBackground")) {
+        ctx.fillStyle = "rgba(22,12,8,0.18)";
+        ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+      }
       ctx.fillStyle = "rgba(255,255,255,0.18)";
       ctx.beginPath();
       ctx.ellipse(195, 388, 170, 42, 0, 0, Math.PI * 2);
@@ -206,27 +294,117 @@ function makeRenderer(canvas, ctx, state) {
     },
 
     drawFighters() {
-      ctx.fillStyle = "#211914";
+      if (this.drawAsset("enemy", 130, 134, 130, 170)) {
+        this.drawAsset("player", 70, 300, 250, 330);
+        return;
+      }
+      this.drawPaintedEnemy();
+      this.drawPaintedPlayer();
+    },
+
+    drawPaintedEnemy() {
+      ctx.save();
+      ctx.translate(195, 216);
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
       ctx.beginPath();
-      ctx.arc(195, 220, 32, 0, Math.PI * 2);
+      ctx.ellipse(0, 72, 58, 12, 0, 0, Math.PI * 2);
       ctx.fill();
-      drawText(ctx, "敌", 195, 220, 28, "#f0c76b", "center");
-      ctx.fillStyle = "#d29a32";
+      ctx.fillStyle = "#211713";
       ctx.beginPath();
-      ctx.arc(195, 438, 44, 0, Math.PI * 2);
+      ctx.ellipse(0, -18, 24, 30, 0, 0, Math.PI * 2);
       ctx.fill();
-      drawText(ctx, "侠", 195, 438, 34, "#1b120d", "center");
+      ctx.fillStyle = "#b87645";
+      ctx.beginPath();
+      ctx.ellipse(0, -8, 18, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#241713";
+      roundRect(ctx, -42, 18, 84, 82, 18);
+      ctx.fill();
+      ctx.strokeStyle = "#a96b32";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(-38, 34);
+      ctx.lineTo(42, 70);
+      ctx.stroke();
+      ctx.strokeStyle = "#1a1110";
+      ctx.lineWidth = 16;
+      ctx.beginPath();
+      ctx.moveTo(-36, 34);
+      ctx.lineTo(-76, 70);
+      ctx.moveTo(36, 34);
+      ctx.lineTo(80, 70);
+      ctx.stroke();
+      ctx.restore();
+    },
+
+    drawPaintedPlayer() {
+      ctx.save();
+      ctx.translate(194, 438);
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.beginPath();
+      ctx.ellipse(4, 112, 116, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,216,98,0.78)";
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.arc(0, 4, 102, Math.PI * 0.15, Math.PI * 1.72);
+      ctx.stroke();
+      ctx.fillStyle = "#21130d";
+      ctx.beginPath();
+      ctx.ellipse(0, -76, 22, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#c98247";
+      ctx.beginPath();
+      ctx.ellipse(0, -56, 18, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const robe = ctx.createLinearGradient(-70, -10, 74, 86);
+      robe.addColorStop(0, "#f1bd46");
+      robe.addColorStop(1, "#7d3e19");
+      ctx.fillStyle = robe;
+      roundRect(ctx, -58, -30, 116, 116, 28);
+      ctx.fill();
+      ctx.strokeStyle = "#1b120d";
+      ctx.lineWidth = 18;
+      ctx.beginPath();
+      ctx.moveTo(-46, -12);
+      ctx.lineTo(44, 44);
+      ctx.stroke();
+      ctx.strokeStyle = "#d3963d";
+      ctx.lineWidth = 22;
+      ctx.beginPath();
+      ctx.moveTo(-52, -8);
+      ctx.lineTo(-104, 52);
+      ctx.moveTo(50, -8);
+      ctx.lineTo(104, 42);
+      ctx.stroke();
+      ctx.strokeStyle = "#18100d";
+      ctx.lineWidth = 28;
+      ctx.beginPath();
+      ctx.moveTo(-34, 78);
+      ctx.lineTo(-88, 128);
+      ctx.moveTo(34, 78);
+      ctx.lineTo(86, 130);
+      ctx.stroke();
+      ctx.strokeStyle = "#7b2117";
+      ctx.lineWidth = 12;
+      ctx.beginPath();
+      ctx.moveTo(-56, 46);
+      ctx.lineTo(62, 50);
+      ctx.stroke();
+      ctx.restore();
     },
 
     drawComboPanel() {
       const battle = state.battle;
       const selected = battle.selected;
       const move = state.getCurrentMove();
-      roundRect(ctx, 22, 515, 346, 58, 10);
-      ctx.fillStyle = "rgba(31,20,12,0.92)";
-      ctx.fill();
-      ctx.strokeStyle = "#b07a3b";
-      ctx.stroke();
+      if (!this.drawAsset("panel", 22, 515, 346, 63)) {
+        roundRect(ctx, 22, 515, 346, 58, 10);
+        ctx.fillStyle = "rgba(31,20,12,0.92)";
+        ctx.fill();
+        ctx.strokeStyle = "#b07a3b";
+        ctx.stroke();
+      }
       const sequence = selected.map((card) => state.fragmentMap[card.id].label).join(" ");
       const title = move ? `${move.name}  ${sequence}` : sequence || "选择手牌碎片开始搓招";
       drawText(ctx, title, 195, 538, 20, move ? "#ffe79b" : "#cdbb93", "center");
@@ -250,12 +428,34 @@ function makeRenderer(canvas, ctx, state) {
         const selected = battle.selected.includes(card);
         const x = startX + index * (cardW + gap);
         const y = selected ? 594 : 612;
-        roundRect(ctx, x, y, cardW, 112, 8);
-        ctx.fillStyle = fragment.color;
-        ctx.fill();
-        ctx.strokeStyle = selected ? "#fff3a0" : "#8d6a37";
-        ctx.lineWidth = selected ? 4 : 2;
-        ctx.stroke();
+        const cardAsset = fragment.type === "direction" ? "cardDirection" : card.id === "punch" ? "cardPunch" : "cardKick";
+        if (!this.drawAsset(cardAsset, x, y, cardW, 112)) {
+          roundRect(ctx, x, y, cardW, 112, 8);
+          const cardGradient = ctx.createLinearGradient(x, y, x, y + 112);
+          if (fragment.type === "direction") {
+            cardGradient.addColorStop(0, "#f6f8c8");
+            cardGradient.addColorStop(1, "#d6e89c");
+          } else if (card.id === "punch") {
+            cardGradient.addColorStop(0, "#ffe6a0");
+            cardGradient.addColorStop(1, "#d29a38");
+          } else {
+            cardGradient.addColorStop(0, "#bdeaf0");
+            cardGradient.addColorStop(1, "#5e9fb4");
+          }
+          ctx.fillStyle = cardGradient;
+          ctx.fill();
+          ctx.strokeStyle = selected ? "#fff3a0" : "#8d6a37";
+          ctx.lineWidth = selected ? 4 : 2;
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(255,255,255,0.45)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + 6, y + 6, cardW - 12, 100);
+        } else if (selected) {
+          roundRect(ctx, x, y, cardW, 112, 8);
+          ctx.strokeStyle = "#fff3a0";
+          ctx.lineWidth = 4;
+          ctx.stroke();
+        }
         drawText(ctx, fragment.label, x + cardW / 2, y + 52, fragment.type === "attack" ? 28 : 36, "#1f1a12", "center");
         drawText(ctx, fragment.name, x + cardW / 2, y + 88, 12, "#3c2b1f", "center");
         this.addHit({ x, y, w: cardW, h: 112 }, "selectHandCard", card.uid);
@@ -264,9 +464,11 @@ function makeRenderer(canvas, ctx, state) {
 
     drawBottomBar() {
       const battle = state.battle;
-      roundRect(ctx, 0, 744, DESIGN_WIDTH, 100, 0);
-      ctx.fillStyle = "rgba(28,18,12,0.96)";
-      ctx.fill();
+      if (!this.drawAsset("controlBar", 0, 744, DESIGN_WIDTH, 110)) {
+        roundRect(ctx, 0, 744, DESIGN_WIDTH, 100, 0);
+        ctx.fillStyle = "rgba(28,18,12,0.96)";
+        ctx.fill();
+      }
       drawText(ctx, "内功", 34, 774, 13, "#ccb47f", "center");
       state.player.internals.slice(0, 2).forEach((id, index) => {
         const internal = state.internalMap[id];

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="460" viewBox="0 0 360 460">
+  <defs>
+    <linearGradient id="dark" x1="0" x2="1">
+      <stop offset="0" stop-color="#1b1716"/>
+      <stop offset="1" stop-color="#4b2a1c"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <ellipse cx="180" cy="420" rx="100" ry="22" fill="#000" opacity="0.25"/>
+    <path d="M170 50 C138 66 132 106 154 128 C182 154 224 134 226 98 C228 68 202 46 170 50 Z" fill="#20120c"/>
+    <path d="M156 112 C148 142 160 166 184 170 C210 174 228 150 222 120 Z" fill="#ad7047"/>
+    <path d="M112 178 C154 140 222 140 266 182 C282 242 278 310 246 374 C204 400 152 396 114 370 C88 300 84 234 112 178 Z" fill="url(#dark)"/>
+    <path d="M110 202 C70 236 48 282 40 338" stroke="#231815" stroke-width="28" stroke-linecap="round"/>
+    <path d="M264 204 C306 236 330 282 340 338" stroke="#352018" stroke-width="28" stroke-linecap="round"/>
+    <path d="M126 368 C104 398 90 426 74 452" stroke="#191312" stroke-width="34" stroke-linecap="round"/>
+    <path d="M236 370 C258 400 274 426 292 452" stroke="#191312" stroke-width="34" stroke-linecap="round"/>
+    <path d="M132 194 C170 228 206 250 252 264" stroke="#bb7d36" stroke-width="8" opacity="0.75"/>
+  </g>
+</svg>

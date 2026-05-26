@@ -1,4 +1,5 @@
 const { GameState } = require("./core/game-state");
+const { AssetLoader } = require("./core/asset-loader");
 const { makeRenderer } = require("./ui/renderer");
 
 class WuxiaGame {
@@ -7,7 +8,8 @@ class WuxiaGame {
     this.canvas = canvas;
     this.ctx = ctx;
     this.state = new GameState();
-    this.renderer = makeRenderer(canvas, ctx, this.state);
+    this.assets = new AssetLoader(canvas);
+    this.renderer = makeRenderer(canvas, ctx, this.state, this.assets);
     this.running = false;
     this.lastTime = 0;
     if (this.options.bindInput !== false) this.bindInput();
@@ -17,6 +19,9 @@ class WuxiaGame {
   start() {
     if (this.running) return;
     this.running = true;
+    this.assets.loadAll().then(() => {
+      this.renderer.render();
+    });
     this.loop(0);
   }
 
