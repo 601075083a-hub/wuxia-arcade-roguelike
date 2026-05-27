@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <base href="/" />
+    <title>武侠街机 Roguelike Preview</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #16110e;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+      }
+
+      .phone {
+        position: relative;
+        width: min(390px, 100vw);
+        height: min(844px, 100vh);
+        border-radius: 28px;
+        overflow: hidden;
+        background: #1d1510;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+      }
+
+      #gameCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        cursor: pointer;
+      }
+
+      .hint {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 10px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        color: rgba(255, 240, 204, 0.82);
+        background: rgba(19, 12, 8, 0.58);
+        font-size: 12px;
+        text-align: center;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="phone">
+      <canvas id="gameCanvas"></canvas>
+      <div class="hint">浏览器预览版 · 点击交互</div>
+    </main>
+    <script src="/preview/bundle.js"></script>
+  </body>
+</html>
