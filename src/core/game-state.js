@@ -31,6 +31,26 @@ function makeCards(ids) {
   }));
 }
 
+function countIds(ids) {
+  return ids.reduce((counts, id) => {
+    counts[id] = (counts[id] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function sameIdCounts(a, b) {
+  if (a.length !== b.length) return false;
+  const left = countIds(a);
+  const right = countIds(b);
+  return Object.keys(left).every((id) => left[id] === right[id]);
+}
+
+function hasEnoughIds(availableIds, requiredIds) {
+  const available = countIds(availableIds);
+  const required = countIds(requiredIds);
+  return Object.keys(required).every((id) => (available[id] || 0) >= required[id]);
+}
+
 class GameState {
   constructor() {
     this.fragmentMap = FRAGMENTS;
@@ -125,9 +145,10 @@ class GameState {
     enemy.vulnerable = 0;
 
     let deckIds = this.player.deck.slice();
+    let thinDeckRemoved = null;
     if (this.hasHook("thinDeck")) {
       const removeIndex = deckIds.findIndex((id) => FRAGMENTS[id].type === "direction");
-      if (removeIndex >= 0) deckIds.splice(removeIndex, 1);
+      if (removeIndex >= 0) thinDeckRemoved = deckIds.splice(removeIndex, 1)[0];
     }
 
     this.battle = {
@@ -143,13 +164,21 @@ class GameState {
       firstMoveCast: false,
       extraDrawNextTurn: 0,
       log: ["战斗开始，抽取招式碎片。"],
-      flash: 0
+      flash: 0,
+      internalTrigger: null,
+      internalTriggerTimer: 0,
+      damageSummary: null
     };
 
     this.player.block = 0;
     this.drawCards(DRAW_COUNT);
     this.scene = "battle";
-    this.message = "点击手牌组成搓招序列。";
+    if (thinDeckRemoved) {
+      this.setInternalTrigger(`先天：临时移除${FRAGMENTS[thinDeckRemoved].name}`);
+      this.message = `先天功生效，临时移除${FRAGMENTS[thinDeckRemoved].name}。`;
+    } else {
+      this.message = "点击手牌组成搓招序列。";
+    }
   }
 
   hasHook(hook) {
@@ -157,6 +186,16 @@ class GameState {
       const internal = this.internalMap[id];
       return internal && internal.ruleHooks.includes(hook);
     });
+  }
+
+  getPlayerInternals() {
+    return this.player.internals.map((id) => this.internalMap[id]).filter(Boolean);
+  }
+
+  setInternalTrigger(text) {
+    if (!this.battle || !text) return;
+    this.battle.internalTrigger = text;
+    this.battle.internalTriggerTimer = 120;
   }
 
   getUnlockedMoves() {
@@ -190,12 +229,52 @@ class GameState {
   getCurrentMove() {
     const input = this.getSelectedInput();
     if (input.length === 0) return null;
-    const matched = this.getUnlockedMoves().find((move) => {
-      if (move.input.length !== input.length) return false;
-      return move.input.every((id, index) => id === input[index]);
-    });
+    const matched = this.getUnlockedMoves().find((move) => sameIdCounts(move.input, input));
     if (matched) return matched;
     return this.getBasicFallbackMove(input);
+  }
+
+  getPlayableMoveHints() {
+    if (!this.battle) return [];
+    const handIds = this.battle.hand.map((card) => card.id);
+    return this.getUnlockedMoves()
+      .filter((move) => hasEnoughIds(handIds, move.input))
+      .map((move) => ({
+        id: move.id,
+        name: move.name,
+        input: move.input.slice(),
+        damage: this.estimateDamage(move),
+        cardUids: this.pickHintCardUids(move.input)
+      }))
+      .sort((a, b) => b.damage - a.damage);
+  }
+
+  getBasicHandFallbackHint() {
+    if (!this.battle) return null;
+    const attackCard = this.battle.hand.find((card) => card.id === "punch" || card.id === "kick");
+    if (!attackCard) return null;
+    const move = this.getBasicFallbackMove([attackCard.id]);
+    if (!move) return null;
+    return {
+      id: move.id,
+      name: move.name,
+      input: move.input.slice(),
+      damage: this.estimateDamage(move),
+      cardUids: [attackCard.uid]
+    };
+  }
+
+  pickHintCardUids(requiredIds) {
+    if (!this.battle) return [];
+    const required = countIds(requiredIds);
+    const picked = [];
+    this.battle.hand.forEach((card) => {
+      if (required[card.id] > 0) {
+        picked.push(card.uid);
+        required[card.id] -= 1;
+      }
+    });
+    return picked;
   }
 
   getBasicFallbackMove(input) {
@@ -225,7 +304,17 @@ class GameState {
   }
 
   estimateDamage(move) {
-    if (!move) return 0;
+    return this.getDamageSummary(move).totalDamage;
+  }
+
+  getDamageSummary(move) {
+    if (!move) return { baseDamage: 0, totalDamage: 0, sources: [] };
+    const sources = [];
+    let baseDamage = move.baseDamage;
+    if (this.hasHook("basicDamageBoost") && move.fallback) {
+      baseDamage += 4;
+      sources.push("无相 +4");
+    }
     let multiplier = 1;
     this.player.externals.forEach((id) => {
       const external = this.externalMap[id];
@@ -233,13 +322,30 @@ class GameState {
       external.passiveModifiers.forEach((modifier) => {
         if (modifier.damageMultiplier && move.tags.includes(modifier.tag)) {
           multiplier *= modifier.damageMultiplier;
+          sources.push(`${external.name} x${modifier.damageMultiplier}`);
         }
       });
     });
-    if (this.hasHook("directionFlex") || this.hasHook("attackFlex")) multiplier *= 1.1;
-    if (this.hasHook("handPower") && this.battle) multiplier *= 1 + this.battle.hand.length * 0.05;
-    if (this.battle && this.battle.enemy.vulnerable > 0) multiplier *= 1.25;
-    return Math.max(1, Math.round(move.baseDamage * multiplier));
+    if (this.hasHook("formalDamageBoost") && !move.fallback) {
+      multiplier *= 1.15;
+      sources.push("易筋 +15%");
+    }
+    if (this.hasHook("handPower") && this.battle) {
+      const handBonus = Math.min(0.3, this.battle.hand.length * 0.05);
+      if (handBonus > 0) {
+        multiplier *= 1 + handBonus;
+        sources.push(`龙象 +${Math.round(handBonus * 100)}%`);
+      }
+    }
+    if (this.battle && this.battle.enemy.vulnerable > 0) {
+      multiplier *= 1.25;
+      sources.push("易伤 x1.25");
+    }
+    return {
+      baseDamage,
+      totalDamage: Math.max(1, Math.round(baseDamage * multiplier)),
+      sources
+    };
   }
 
   selectHandCard(uid) {
@@ -271,7 +377,9 @@ class GameState {
       return;
     }
 
-    const damage = this.estimateDamage(move);
+    const damageSummary = this.getDamageSummary(move);
+    const damage = damageSummary.totalDamage;
+    this.battle.damageSummary = damageSummary;
     this.damageEnemy(damage);
     this.battle.flash = 14;
     this.battle.lastDamage = damage;
@@ -288,6 +396,12 @@ class GameState {
     const free = this.hasHook("freeFirstMove") && !this.battle.firstMoveCast;
     this.battle.firstMoveCast = true;
     if (!free) this.battle.actionsLeft -= 1;
+    if (free) {
+      this.setInternalTrigger("九阳：本次出招不耗次数");
+    } else {
+      const internalSources = damageSummary.sources.filter((source) => source.startsWith("无相") || source.startsWith("易筋") || source.startsWith("龙象"));
+      if (internalSources.length > 0) this.setInternalTrigger(internalSources.join(" / "));
+    }
 
     if (this.battle.enemy.hp <= 0) {
       this.finishBattle(true);
@@ -349,14 +463,15 @@ class GameState {
       return;
     }
 
-    const extra = this.hasHook("discardDraw") ? Math.floor(discarded / 2) : 0;
+    const extra = this.hasHook("discardDraw") ? Math.min(2, Math.floor(discarded / 2)) : 0;
     this.player.block = 0;
     this.battle.turn += 1;
     this.battle.actionsLeft = MAX_ACTIONS;
     this.battle.firstMoveCast = false;
     this.drawCards(DRAW_COUNT + extra);
+    if (extra > 0) this.setInternalTrigger(`北冥：额外抽 ${extra} 张`);
     this.battle.log.unshift(`第 ${this.battle.turn} 回合，抽取 ${DRAW_COUNT + extra} 张。`);
-    this.message = "新回合开始。";
+    this.message = extra > 0 ? `北冥神功生效，额外抽 ${extra} 张。` : "新回合开始。";
   }
 
   resolveEnemyIntent() {
@@ -426,9 +541,30 @@ class GameState {
     const external = EXTERNALS.find((item) => !this.player.externals.includes(item.id)) || EXTERNALS[0];
     const internal = INTERNALS.find((item) => !this.player.internals.includes(item.id)) || INTERNALS[0];
     return [
-      { type: "fragment", id: fragment, title: `获得碎片：${FRAGMENTS[fragment].name}` },
-      { type: "external", id: external.id, title: `外功：${external.name}` },
-      { type: "internal", id: internal.id, title: `内功：${internal.name}` }
+      {
+        type: "fragment",
+        id: fragment,
+        title: `获得碎片：${FRAGMENTS[fragment].name}`,
+        tag: "牌库补强",
+        description: "加入 1 张碎片牌，提高后续搓招稳定性。",
+        effect: `加入 ${FRAGMENTS[fragment].label} ${FRAGMENTS[fragment].name}`
+      },
+      {
+        type: "external",
+        id: external.id,
+        title: `外功：${external.name}`,
+        tag: "招式流派",
+        description: "解锁新招式或强化对应招式标签。",
+        effect: external.unlockedMoves.length > 0 ? `解锁 ${external.unlockedMoves.length} 个招式` : "强化已有招式效果"
+      },
+      {
+        type: "internal",
+        id: internal.id,
+        title: `内功：${internal.name}`,
+        tag: "规则改写",
+        description: internal.description,
+        effect: internal.combatText
+      }
     ];
   }
 

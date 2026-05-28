@@ -22,6 +22,16 @@ function drawText(ctx, text, x, y, size, color, align) {
   ctx.fillText(text, x, y);
 }
 
+function fitText(ctx, text, size, maxWidth) {
+  ctx.font = `${size}px sans-serif`;
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let result = text;
+  while (result.length > 1 && ctx.measureText(`${result}...`).width > maxWidth) {
+    result = result.slice(0, -1);
+  }
+  return `${result}...`;
+}
+
 function drawOutlinedText(ctx, text, x, y, size, color, stroke, align) {
   ctx.font = `${size}px sans-serif`;
   ctx.textAlign = align || "left";
@@ -42,6 +52,118 @@ function drawButton(ctx, box, label, enabled) {
   ctx.lineWidth = 2;
   ctx.stroke();
   drawText(ctx, label, box.x + box.w / 2, box.y + box.h / 2, 17, enabled === false ? "#9c8c7a" : "#22150d", "center");
+}
+
+function drawHudPlaque(ctx, box, options) {
+  const radius = options && options.radius !== undefined ? options.radius : 12;
+  const fill = options && options.fill ? options.fill : "rgba(5, 15, 15, 0.78)";
+  const stroke = options && options.stroke ? options.stroke : "rgba(218, 174, 92, 0.72)";
+  roundRect(ctx, box.x, box.y, box.w, box.h, radius);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = options && options.lineWidth ? options.lineWidth : 1.2;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255, 226, 154, 0.28)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(box.x + 16, box.y + 6);
+  ctx.lineTo(box.x + box.w - 16, box.y + 6);
+  ctx.moveTo(box.x + 16, box.y + box.h - 6);
+  ctx.lineTo(box.x + box.w - 16, box.y + box.h - 6);
+  ctx.stroke();
+}
+
+function drawHudButton(ctx, box, label, enabled) {
+  drawHudPlaque(ctx, box, {
+    radius: 11,
+    fill: enabled === false ? "rgba(45, 38, 31, 0.82)" : "rgba(35, 28, 22, 0.9)",
+    stroke: enabled === false ? "rgba(154, 126, 82, 0.52)" : "rgba(245, 202, 107, 0.88)",
+    lineWidth: enabled === false ? 1 : 1.5
+  });
+  drawText(ctx, label, box.x + box.w / 2, box.y + box.h / 2, box.h >= 48 ? 17 : 14, enabled === false ? "#9e927d" : "#ffe7a1", "center");
+}
+
+function drawBladePanel(ctx, box, fill) {
+  const cut = Math.min(18, box.h * 0.4);
+  ctx.beginPath();
+  ctx.moveTo(box.x + cut, box.y);
+  ctx.lineTo(box.x + box.w - cut, box.y);
+  ctx.lineTo(box.x + box.w, box.y + box.h / 2);
+  ctx.lineTo(box.x + box.w - cut, box.y + box.h);
+  ctx.lineTo(box.x + cut, box.y + box.h);
+  ctx.lineTo(box.x, box.y + box.h / 2);
+  ctx.closePath();
+  ctx.fillStyle = fill || "rgba(3, 14, 14, 0.82)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(232, 190, 96, 0.9)";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255, 231, 155, 0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(box.x + cut + 10, box.y + 8);
+  ctx.lineTo(box.x + box.w - cut - 10, box.y + 8);
+  ctx.moveTo(box.x + cut + 10, box.y + box.h - 8);
+  ctx.lineTo(box.x + box.w - cut - 10, box.y + box.h - 8);
+  ctx.stroke();
+}
+
+function drawCommandSeal(ctx, box, label, enabled) {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const r = Math.min(box.w, box.h) / 2 - 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = enabled === false ? "rgba(54, 45, 35, 0.86)" : "rgba(30, 25, 20, 0.94)";
+  ctx.fill();
+  ctx.strokeStyle = enabled === false ? "rgba(142, 116, 74, 0.55)" : "rgba(247, 205, 105, 0.95)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+  ctx.strokeStyle = enabled === false ? "rgba(112, 95, 68, 0.45)" : "rgba(255, 235, 160, 0.35)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  drawText(ctx, label, cx, cy, box.w >= 58 ? 16 : 13, enabled === false ? "#9e927d" : "#ffe7a1", "center");
+  ctx.restore();
+}
+
+function drawComboTokenPanel(ctx, box) {
+  const gradient = ctx.createLinearGradient(box.x, box.y, box.x, box.y + box.h);
+  gradient.addColorStop(0, "rgba(6, 19, 19, 0.94)");
+  gradient.addColorStop(0.55, "rgba(6, 14, 13, 0.9)");
+  gradient.addColorStop(1, "rgba(17, 10, 7, 0.94)");
+  drawBladePanel(ctx, box, gradient);
+  ctx.fillStyle = "rgba(224, 178, 86, 0.12)";
+  ctx.beginPath();
+  ctx.arc(box.x + 32, box.y + box.h / 2, 23, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 228, 148, 0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(box.x + 70, box.y + 23);
+  ctx.lineTo(box.x + box.w - 28, box.y + 23);
+  ctx.moveTo(box.x + 70, box.y + box.h - 23);
+  ctx.lineTo(box.x + box.w - 28, box.y + box.h - 23);
+  ctx.stroke();
+  drawText(ctx, "招", box.x + 32, box.y + box.h / 2, 22, "#ffe7a1", "center");
+}
+
+function drawHpGauge(ctx, x, y, w, h, value, maxValue) {
+  roundRect(ctx, x, y, w, h, h / 2);
+  ctx.fillStyle = "rgba(35, 16, 13, 0.88)";
+  ctx.fill();
+  const fillW = Math.max(0, Math.min(w, w * value / Math.max(1, maxValue)));
+  if (fillW > 0) {
+    roundRect(ctx, x, y, fillW, h, h / 2);
+    ctx.fillStyle = "#e85035";
+    ctx.fill();
+  }
+  ctx.strokeStyle = "rgba(255, 218, 126, 0.36)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 }
 
 function makeRenderer(canvas, ctx, state, assets) {
@@ -213,6 +335,51 @@ function makeRenderer(canvas, ctx, state, assets) {
       }
     },
 
+    drawAssetCover(key, x, y, w, h) {
+      const image = assets && assets.get ? assets.get(key) : null;
+      if (!image) return false;
+      const imageW = image.width || image.naturalWidth || w;
+      const imageH = image.height || image.naturalHeight || h;
+      if (!imageW || !imageH) return this.drawAsset(key, x, y, w, h);
+      const scale = Math.max(w / imageW, h / imageH);
+      const drawW = imageW * scale;
+      const drawH = imageH * scale;
+      const drawX = x + (w - drawW) / 2;
+      const drawY = y + (h - drawH) / 2;
+      try {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        ctx.drawImage(image, drawX, drawY, drawW, drawH);
+        ctx.restore();
+        return true;
+      } catch (error) {
+        ctx.restore && ctx.restore();
+        return false;
+      }
+    },
+
+    drawJianghuBackdrop(depth) {
+      if (!this.drawAssetCover("battleBackground", 0, 0, DESIGN_WIDTH, DESIGN_HEIGHT)) {
+        this.drawPaintedBattleBackground();
+      }
+      const shade = ctx.createLinearGradient(0, 0, 0, DESIGN_HEIGHT);
+      shade.addColorStop(0, `rgba(7, 12, 13, ${depth === "title" ? 0.34 : 0.5})`);
+      shade.addColorStop(0.36, "rgba(12, 18, 17, 0.44)");
+      shade.addColorStop(0.74, "rgba(19, 11, 7, 0.76)");
+      shade.addColorStop(1, "rgba(13, 7, 5, 0.94)");
+      ctx.fillStyle = shade;
+      ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+      ctx.strokeStyle = "rgba(230, 184, 95, 0.28)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i += 1) {
+        ctx.beginPath();
+        ctx.arc(195, 150 + i * 104, 72 + i * 18, Math.PI * 0.08, Math.PI * 0.92);
+        ctx.stroke();
+      }
+    },
+
     render() {
       this.clear();
       if (state.scene === "title") this.drawTitle();
@@ -227,11 +394,34 @@ function makeRenderer(canvas, ctx, state, assets) {
     },
 
     drawTitle() {
-      drawText(ctx, "武侠街机 Roguelike", DESIGN_WIDTH / 2, 164, 30, "#fff3c4", "center");
-      drawText(ctx, "搓招组牌 · 江湖跑图 · 外功内功构建", DESIGN_WIDTH / 2, 208, 15, "#f7d98a", "center");
-      drawText(ctx, "点击开始 Demo", DESIGN_WIDTH / 2, 420, 22, "#ffffff", "center");
-      const box = { x: 95, y: 500, w: 200, h: 54 };
+      this.drawJianghuBackdrop("title");
+      ctx.fillStyle = "rgba(18, 12, 8, 0.58)";
+      ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+      ctx.strokeStyle = "rgba(234, 190, 100, 0.42)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(70, 126);
+      ctx.lineTo(320, 126);
+      ctx.moveTo(92, 298);
+      ctx.lineTo(298, 298);
+      ctx.stroke();
+
+      drawText(ctx, "武侠街机", DESIGN_WIDTH / 2, 168, 42, "#fff1b8", "center");
+      drawText(ctx, "ROGUELIKE", DESIGN_WIDTH / 2, 216, 22, "#d6a64f", "center");
+      drawText(ctx, "拳腿碎片，搓招入局", DESIGN_WIDTH / 2, 264, 15, "#e7d1a2", "center");
+
+      roundRect(ctx, 60, 352, 270, 86, 18);
+      ctx.fillStyle = "rgba(22, 15, 10, 0.76)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(216, 168, 73, 0.72)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawText(ctx, "完整 Demo", DESIGN_WIDTH / 2, 380, 17, "#ffe79b", "center");
+      drawText(ctx, "跑图  战斗  奖励  Boss", DESIGN_WIDTH / 2, 412, 13, "#cbb78a", "center");
+
+      const box = { x: 88, y: 518, w: 214, h: 58 };
       drawButton(ctx, box, "开始闯荡", true);
+      drawText(ctx, "点击后进入江湖路线", DESIGN_WIDTH / 2, 606, 13, "#bda77d", "center");
       this.addHit(box, "startRun");
     },
 
@@ -242,24 +432,71 @@ function makeRenderer(canvas, ctx, state, assets) {
     },
 
     drawMap() {
-      this.drawHud();
+      this.drawJianghuBackdrop("map");
       const floor = RUN_MAP[state.run.floorIndex];
-      drawText(ctx, floor.title, DESIGN_WIDTH / 2, 112, 26, "#fff3c4", "center");
-      drawText(ctx, `第 ${floor.floor} 层`, DESIGN_WIDTH / 2, 145, 16, "#e2c778", "center");
+      if (!floor) return;
+      roundRect(ctx, 22, 38, 250, 58, 18);
+      ctx.fillStyle = "rgba(31, 22, 16, 0.9)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(216, 168, 73, 0.76)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawText(ctx, `${state.player.name}  ${state.player.hp}/${state.player.maxHp}`, 44, 58, 14, "#fff3c4");
+      drawText(ctx, `金 ${state.player.gold}  外功${state.player.externals.length}  内功${state.player.internals.length}`, 44, 82, 12, "#d8bd79");
+
+      drawText(ctx, "江湖路引", DESIGN_WIDTH / 2, 126, 28, "#fff1b8", "center");
+      drawText(ctx, `${floor.title} · 第 ${floor.floor} 层`, DESIGN_WIDTH / 2, 160, 15, "#d6a64f", "center");
+
+      const nodeTypeLabel = {
+        battle: "普通",
+        elite: "精英",
+        shop: "商店",
+        event: "奇遇",
+        rest: "调息",
+        boss: "Boss"
+      };
+      const nodeXs = [126, 264, 126, 264, 126];
+      const startY = 226;
+      const gapY = floor.nodes.length >= 4 ? 104 : 122;
+      ctx.strokeStyle = "rgba(214, 166, 79, 0.46)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      floor.nodes.forEach((node, index) => {
+        const x = nodeXs[index % nodeXs.length];
+        const y = startY + index * gapY;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
       floor.nodes.forEach((node, index) => {
         const active = index === state.run.nodeIndex;
         const done = index < state.run.nodeIndex;
-        const y = 220 + index * 110;
-        roundRect(ctx, 68, y, 254, 70, 18);
-        ctx.fillStyle = active ? "#5b351f" : done ? "#25321f" : "#2e2925";
+        const future = index > state.run.nodeIndex;
+        const x = nodeXs[index % nodeXs.length];
+        const y = startY + index * gapY;
+        const box = { x: x - 82, y: y - 36, w: 164, h: 72 };
+        roundRect(ctx, box.x, box.y, box.w, box.h, 16);
+        ctx.fillStyle = active ? "rgba(92, 53, 31, 0.94)" : done ? "rgba(31, 48, 35, 0.82)" : "rgba(30, 27, 24, 0.72)";
         ctx.fill();
-        ctx.strokeStyle = active ? "#f0c76b" : "#6d5a3c";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = active ? "#f0c76b" : done ? "#74905e" : "#6d5a3c";
+        ctx.lineWidth = active ? 2.5 : 1.5;
         ctx.stroke();
-        drawText(ctx, done ? "已完成" : node.label, DESIGN_WIDTH / 2, y + 27, 19, "#fff3c4", "center");
-        drawText(ctx, node.type.toUpperCase(), DESIGN_WIDTH / 2, y + 51, 12, "#c8b68b", "center");
-        if (active) this.addHit({ x: 68, y, w: 254, h: 70 }, "enterNode");
+        roundRect(ctx, box.x + 14, box.y + 12, 42, 20, 9);
+        ctx.fillStyle = active ? "rgba(238, 193, 96, 0.28)" : "rgba(148, 118, 69, 0.24)";
+        ctx.fill();
+        drawText(ctx, nodeTypeLabel[node.type] || node.type, box.x + 35, box.y + 22, 10, active ? "#ffe79b" : "#c8b68b", "center");
+        drawText(ctx, done ? "已完成" : fitText(ctx, node.label, 17, 92), box.x + 68, box.y + 26, 17, future ? "#8d806b" : "#fff3c4");
+        drawText(ctx, active ? "点击前往" : done ? "旧路已过" : "未到达", box.x + 68, box.y + 52, 12, active ? "#f0c76b" : "#9f8c6a");
+        if (active) this.addHit(box, "enterNode");
       });
+
+      roundRect(ctx, 48, 754, 294, 42, 14);
+      ctx.fillStyle = "rgba(18, 12, 8, 0.74)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(184,137,69,0.58)";
+      ctx.stroke();
+      drawText(ctx, "选择当前节点，继续推进这一局", DESIGN_WIDTH / 2, 775, 13, "#d8bd79", "center");
     },
 
     drawBattle() {
@@ -270,6 +507,7 @@ function makeRenderer(canvas, ctx, state, assets) {
       this.drawBattleFeedback();
       this.drawEnemyBattleHud(enemy);
       this.drawComboPanel();
+      this.drawInternalTrigger();
       this.drawHand();
       this.drawBottomBar();
     },
@@ -297,37 +535,24 @@ function makeRenderer(canvas, ctx, state, assets) {
     },
 
     drawEnemyBattleHud(enemy) {
-      roundRect(ctx, 22, 40, 250, 58, 18);
-      ctx.fillStyle = "rgba(32,22,17,0.9)";
-      ctx.fill();
-      ctx.strokeStyle = "#a9773c";
-      ctx.stroke();
-      drawText(ctx, enemy.name, 46, 56, 15, "#fff3c4");
-      ctx.fillStyle = "#3b1b13";
-      ctx.fillRect(102, 51, 118, 12);
-      ctx.fillStyle = "#e44f2f";
-      ctx.fillRect(102, 51, Math.max(0, 118 * enemy.hp / enemy.maxHp), 12);
-      drawText(ctx, `${enemy.hp}/${enemy.maxHp}`, 161, 57, 9, "#fff", "center");
+      drawBladePanel(ctx, { x: 24, y: 42, w: 246, h: 52 }, "rgba(2, 13, 15, 0.78)");
+      ctx.fillStyle = "rgba(225, 180, 92, 0.16)";
+      ctx.fillRect(54, 46, 1, 44);
+      drawText(ctx, enemy.name, 42, 57, 14, "#fff0b8");
+      drawHpGauge(ctx, 108, 52, 104, 8, enemy.hp, enemy.maxHp);
+      drawText(ctx, `${enemy.hp}/${enemy.maxHp}`, 160, 56, 8, "#fff8d8", "center");
       const intent = enemy.intents[enemy.intentIndex % enemy.intents.length];
-      drawText(ctx, intent.label, 46, 82, 12, "#ffd36b");
-      drawText(ctx, enemy.block > 0 ? `盾 ${enemy.block}` : "无盾", 220, 82, 12, "#bfe1ff", "right");
+      drawText(ctx, intent.label, 42, 78, 12, "#f1c869");
+      drawText(ctx, enemy.block > 0 ? `盾 ${enemy.block}` : "无盾", 216, 78, 12, "#cfe8ff", "right");
     },
 
     drawPlayerBottomHud() {
-      roundRect(ctx, 18, 724, 206, 32, 12);
-      ctx.fillStyle = "rgba(26,18,13,0.82)";
-      ctx.fill();
-      ctx.strokeStyle = "#8d6a37";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      drawText(ctx, "少侠", 36, 740, 12, "#fff3c4");
-      ctx.fillStyle = "#3b1b13";
-      ctx.fillRect(76, 734, 94, 10);
-      ctx.fillStyle = "#e44f2f";
-      ctx.fillRect(76, 734, Math.max(0, 94 * state.player.hp / state.player.maxHp), 10);
-      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 123, 739, 8, "#fff", "center");
-      drawText(ctx, `甲 ${state.player.block}`, 198, 740, 11, "#bfe1ff", "center");
-      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 198, 752, 10, "#b6e889", "center");
+      drawBladePanel(ctx, { x: 16, y: 722, w: 218, h: 36 }, "rgba(2, 13, 15, 0.8)");
+      drawText(ctx, "少侠", 36, 738, 12, "#fff0b8");
+      drawHpGauge(ctx, 76, 733, 96, 9, state.player.hp, state.player.maxHp);
+      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 124, 737, 8, "#fff8d8", "center");
+      drawText(ctx, `甲 ${state.player.block}`, 204, 738, 11, "#cfe8ff", "center");
+      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 204, 750, 10, "#b6e889", "center");
     },
 
     drawFighters() {
@@ -358,6 +583,23 @@ function makeRenderer(canvas, ctx, state, assets) {
       }
       ctx.restore();
       battle.flash = Math.max(0, battle.flash - 1);
+    },
+
+    drawInternalTrigger() {
+      const battle = state.battle;
+      if (!battle || !battle.internalTrigger || battle.internalTriggerTimer <= 0) return;
+      const alpha = Math.min(1, battle.internalTriggerTimer / 24);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      roundRect(ctx, 80, 438, 230, 28, 14);
+      ctx.fillStyle = "rgba(24,17,12,0.86)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,216,120,0.9)";
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      drawText(ctx, battle.internalTrigger, 195, 452, 13, "#ffe79b", "center");
+      ctx.restore();
+      battle.internalTriggerTimer = Math.max(0, battle.internalTriggerTimer - 1);
     },
 
     drawPaintedEnemy() {
@@ -456,26 +698,27 @@ function makeRenderer(canvas, ctx, state, assets) {
       const battle = state.battle;
       const selected = battle.selected;
       const move = state.getCurrentMove();
-      const panel = { x: 20, y: 492, w: 254, h: 82 };
-      roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 12);
-      ctx.fillStyle = "rgba(14,18,17,0.9)";
-      ctx.fill();
-      ctx.strokeStyle = "#b88945";
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
+      const hints = state.getPlayableMoveHints ? state.getPlayableMoveHints() : [];
+      const bestHint = hints[0] || null;
+      const basicHint = !bestHint && state.getBasicHandFallbackHint ? state.getBasicHandFallbackHint() : null;
+      const panel = { x: 46, y: 462, w: 244, h: 96 };
+      drawComboTokenPanel(ctx, panel);
       const sequence = selected.map((card) => state.fragmentMap[card.id].label).join(" ");
-      const title = move ? move.name : selected.length > 0 ? "已选序列" : "选择手牌碎片开始搓招";
-      drawText(ctx, title, 147, 513, 17, move ? "#ffe79b" : "#cdbb93", "center");
+      const hintSequence = bestHint ? bestHint.input.map((id) => state.fragmentMap[id].label).join(" ") : "";
+      const title = move ? move.name : selected.length > 0 ? "已选碎片" : bestHint ? `可组成：${bestHint.name}` : basicHint ? `可普通出招：${basicHint.name}` : "选择手牌碎片开始搓招";
+      const titleColor = move && !move.fallback ? "#fff0a8" : move ? "#ffe0a0" : bestHint ? "#ffe082" : "#cdbb93";
+      drawText(ctx, fitText(ctx, state.message || "", 11, 148), 182, 480, 11, "#d7c097", "center");
+      drawText(ctx, fitText(ctx, title, 18, 152), 182, 509, 18, titleColor, "center");
       if (selected.length > 0) {
         const tokenW = 28;
         const tokenGap = 6;
         const total = selected.length * tokenW + Math.max(0, selected.length - 1) * tokenGap;
-        const startX = 147 - total / 2;
+        const startX = 182 - total / 2;
         selected.forEach((card, index) => {
           const tokenX = startX + index * (tokenW + tokenGap);
-          const tokenY = 527;
+          const tokenY = 521;
           roundRect(ctx, tokenX, tokenY, tokenW, 24, 8);
-          ctx.fillStyle = "rgba(216,168,73,0.24)";
+          ctx.fillStyle = "rgba(218,174,92,0.18)";
           ctx.fill();
           ctx.strokeStyle = "rgba(255,226,154,0.78)";
           ctx.lineWidth = 1.2;
@@ -483,22 +726,35 @@ function makeRenderer(canvas, ctx, state, assets) {
           drawText(ctx, state.fragmentMap[card.id].label, tokenX + tokenW / 2, tokenY + 12, 15, "#ffe8a4", "center");
           this.addHit({ x: tokenX, y: tokenY, w: tokenW, h: 24 }, "unselectCard", card.uid);
         });
+      } else if (bestHint) {
+        drawText(ctx, hintSequence, 182, 532, 14, "#f8d979", "center");
+      } else if (basicHint) {
+        drawText(ctx, "选中拳/腿即可出招", 182, 532, 13, "#d6c299", "center");
       } else {
-        drawText(ctx, "点击手牌组成序列", 147, 538, 13, "#d6c299", "center");
+        drawText(ctx, "点击手牌组成序列", 182, 532, 13, "#d6c299", "center");
       }
-      drawText(ctx, move ? `预计伤害 ${state.estimateDamage(move)}` : selected.length > 0 ? sequence : "命中配方后可出招", 147, 560, 12, "#d6c299", "center");
-      const castBox = { x: 288, y: 506, w: 76, h: 56 };
-      drawButton(ctx, castBox, "出招", Boolean(move));
+      const detail = move ? `${move.fallback ? "普通出招" : "正式招式"} · 预计伤害 ${state.estimateDamage(move)}` : selected.length > 0 ? sequence : bestHint ? `预计伤害 ${bestHint.damage}` : basicHint ? `预计伤害 ${basicHint.damage}` : "命中配方后可出招";
+      drawText(ctx, fitText(ctx, detail, 12, 156), 182, 548, 12, "#d6c299", "center");
+      const castBox = { x: 304, y: 478, w: 72, h: 72 };
+      drawCommandSeal(ctx, castBox, "出招", Boolean(move));
       if (move) this.addHit(castBox, "castMove");
     },
 
     drawHand() {
       const battle = state.battle;
-      roundRect(ctx, 12, 580, 366, 136, 14);
-      ctx.fillStyle = "rgba(8,12,12,0.74)";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(184,137,69,0.7)";
-      ctx.lineWidth = 1.4;
+      const hintUids = new Set();
+      if (state.getPlayableMoveHints) {
+        state.getPlayableMoveHints().forEach((hint) => {
+          hint.cardUids.forEach((uid) => hintUids.add(uid));
+        });
+      }
+      const tray = { x: 16, y: 584, w: 358, h: 130 };
+      drawHudPlaque(ctx, tray, { radius: 12, fill: "rgba(4, 13, 13, 0.46)", stroke: "rgba(206, 164, 86, 0.52)", lineWidth: 1 });
+      ctx.strokeStyle = "rgba(245, 202, 107, 0.28)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tray.x + 22, tray.y + 18);
+      ctx.lineTo(tray.x + tray.w - 22, tray.y + 18);
       ctx.stroke();
       const handSize = battle.hand.length;
       const cardW = handSize > 6 ? 46 : handSize > 5 ? 52 : 58;
@@ -509,9 +765,18 @@ function makeRenderer(canvas, ctx, state, assets) {
       battle.hand.forEach((card, index) => {
         const fragment = state.fragmentMap[card.id];
         const selected = battle.selected.includes(card);
+        const hinted = hintUids.has(card.uid);
         const x = startX + index * (cardW + gap);
-        const y = selected ? 596 : 610;
+        const y = selected ? 598 : hinted ? 606 : 612;
         const cardAsset = fragment.type === "direction" ? "cardDirection" : card.id === "punch" ? "cardPunch" : "cardKick";
+        if (hinted && !selected) {
+          roundRect(ctx, x - 4, y - 4, cardW + 8, cardH + 8, 11);
+          ctx.fillStyle = "rgba(255,218,91,0.16)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,224,130,0.86)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
         if (!this.drawAssetContain(cardAsset, x, y, cardW, cardH)) {
           roundRect(ctx, x, y, cardW, cardH, 8);
           const cardGradient = ctx.createLinearGradient(x, y, x, y + 112);
@@ -527,16 +792,16 @@ function makeRenderer(canvas, ctx, state, assets) {
           }
           ctx.fillStyle = cardGradient;
           ctx.fill();
-          ctx.strokeStyle = selected ? "#fff3a0" : "#8d6a37";
-          ctx.lineWidth = selected ? 4 : 2;
+          ctx.strokeStyle = selected ? "#fff3a0" : hinted ? "#ffe082" : "#8d6a37";
+          ctx.lineWidth = selected ? 4 : hinted ? 3 : 2;
           ctx.stroke();
           ctx.strokeStyle = "rgba(255,255,255,0.45)";
           ctx.lineWidth = 1;
           ctx.strokeRect(x + 6, y + 6, cardW - 12, cardH - 12);
-        } else if (selected) {
+        } else if (selected || hinted) {
           roundRect(ctx, x, y, cardW, cardH, 8);
-          ctx.strokeStyle = "#fff3a0";
-          ctx.lineWidth = 4;
+          ctx.strokeStyle = selected ? "#fff3a0" : "#ffe082";
+          ctx.lineWidth = selected ? 4 : 3;
           ctx.stroke();
         }
         drawOutlinedText(ctx, fragment.label, x + cardW / 2, y + cardH * 0.43, fragment.type === "attack" ? 24 : 28, "#21150d", "rgba(255,246,204,0.88)", "center");
@@ -547,28 +812,35 @@ function makeRenderer(canvas, ctx, state, assets) {
 
     drawBottomBar() {
       const battle = state.battle;
-      roundRect(ctx, 0, 720, DESIGN_WIDTH, 124, 0);
-      ctx.fillStyle = "rgba(28,18,12,0.96)";
-      ctx.fill();
-      this.drawAssetContain("controlBar", 0, 782, DESIGN_WIDTH, 46);
-      ctx.fillStyle = "rgba(6,9,9,0.58)";
-      ctx.fillRect(0, 720, DESIGN_WIDTH, 124);
-      this.drawPlayerBottomHud();
-      drawText(ctx, "内功", 34, 774, 13, "#ccb47f", "center");
-      state.player.internals.slice(0, 2).forEach((id, index) => {
-        const internal = state.internalMap[id];
-        drawText(ctx, internal.name.slice(0, 3), 54 + index * 64, 802, 12, "#fff3c4", "center");
-      });
-      roundRect(ctx, 150, 768, 78, 30, 12);
-      ctx.fillStyle = "#2a1d14";
-      ctx.fill();
-      ctx.strokeStyle = "#b88945";
+      const bottomGradient = ctx.createLinearGradient(0, 708, 0, DESIGN_HEIGHT);
+      bottomGradient.addColorStop(0, "rgba(2, 9, 9, 0.12)");
+      bottomGradient.addColorStop(0.18, "rgba(2, 9, 9, 0.78)");
+      bottomGradient.addColorStop(1, "rgba(4, 8, 8, 0.97)");
+      ctx.fillStyle = bottomGradient;
+      ctx.fillRect(0, 706, DESIGN_WIDTH, 138);
+      this.drawAssetContain("controlBar", 0, 744, DESIGN_WIDTH, 84);
+      ctx.fillStyle = "rgba(0, 8, 8, 0.44)";
+      ctx.fillRect(0, 706, DESIGN_WIDTH, 138);
+      ctx.strokeStyle = "rgba(225, 180, 92, 0.5)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(18, 722);
+      ctx.lineTo(372, 722);
       ctx.stroke();
+      this.drawPlayerBottomHud();
+      drawText(ctx, "内功", 38, 772, 12, "#d8c08a", "center");
+      state.getPlayerInternals().slice(0, 2).forEach((internal, index) => {
+        const x = 18 + index * 66;
+        drawHudPlaque(ctx, { x, y: 786, w: 62, h: 34 }, { radius: 8, fill: "rgba(6, 18, 18, 0.64)", stroke: "rgba(184, 137, 69, 0.54)", lineWidth: 1 });
+        drawText(ctx, internal.shortName || internal.name.slice(0, 2), x + 31, 794, 12, "#fff3c4", "center");
+        drawText(ctx, internal.combatText || "", x + 31, 809, 9, "#ccb47f", "center");
+      });
+      drawBladePanel(ctx, { x: 150, y: 768, w: 78, h: 30 }, "rgba(7, 17, 17, 0.8)");
       drawText(ctx, `出招 ${battle.actionsLeft}/3`, 189, 783, 13, "#ffd45e", "center");
-      const clearBox = { x: 242, y: 764, w: 54, h: 40 };
-      const endBox = { x: 306, y: 764, w: 62, h: 40 };
-      drawButton(ctx, clearBox, "清空", true);
-      drawButton(ctx, endBox, "回合", true);
+      const clearBox = { x: 244, y: 756, w: 50, h: 50 };
+      const endBox = { x: 312, y: 752, w: 58, h: 58 };
+      drawCommandSeal(ctx, clearBox, "清空", true);
+      drawCommandSeal(ctx, endBox, "回合", true);
       this.addHit(clearBox, "clearSelection");
       this.addHit(endBox, "endTurn");
     },
@@ -583,8 +855,15 @@ function makeRenderer(canvas, ctx, state, assets) {
         ctx.fill();
         ctx.strokeStyle = "#b88945";
         ctx.stroke();
-        drawText(ctx, option.title, DESIGN_WIDTH / 2, box.y + 34, 19, "#ffe79b", "center");
-        drawText(ctx, "点击选择", DESIGN_WIDTH / 2, box.y + 62, 13, "#c8b68b", "center");
+        if (option.tag) {
+          roundRect(ctx, box.x + 18, box.y + 14, 72, 20, 9);
+          ctx.fillStyle = option.type === "internal" ? "rgba(79,114,145,0.5)" : "rgba(184,137,69,0.38)";
+          ctx.fill();
+          drawText(ctx, option.tag, box.x + 54, box.y + 24, 10, "#fff3c4", "center");
+        }
+        drawText(ctx, fitText(ctx, option.title, 17, 194), box.x + 104, box.y + 25, 17, "#ffe79b");
+        drawText(ctx, fitText(ctx, option.description || "点击选择", 12, 274), box.x + 20, box.y + 54, 12, "#e1cfa4");
+        drawText(ctx, fitText(ctx, option.effect || "点击选择", 12, 274), box.x + 20, box.y + 76, 12, "#f3d56f");
         this.addHit(box, action, index);
       });
     },
@@ -640,6 +919,7 @@ function makeRenderer(canvas, ctx, state, assets) {
 
     drawMessage() {
       const battleMode = state.scene === "battle";
+      if (battleMode) return;
       const box = battleMode ? { x: 32, y: 466, w: 232, h: 26 } : { x: 18, y: 92, w: 354, h: 34 };
       roundRect(ctx, box.x, box.y, box.w, box.h, 12);
       ctx.fillStyle = "rgba(26,18,13,0.68)";

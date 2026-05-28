@@ -16,6 +16,8 @@ window.render_game_to_text = () => {
   const state = game.state;
   const battle = state.battle;
   const move = battle ? state.getCurrentMove() : null;
+  const playableMoves = battle && state.getPlayableMoveHints ? state.getPlayableMoveHints() : [];
+  const basicPlayableMove = battle && state.getBasicHandFallbackHint ? state.getBasicHandFallbackHint() : null;
   const enemy = battle && battle.enemy ? battle.enemy : null;
   const payload = {
     coordinateSystem: "design canvas 390x844, origin top-left, x right, y down",
@@ -28,7 +30,14 @@ window.render_game_to_text = () => {
       gold: state.player.gold,
       poison: state.player.poison,
       externals: state.player.externals,
-      internals: state.player.internals
+      internals: state.getPlayerInternals ? state.getPlayerInternals().map((internal) => ({
+        id: internal.id,
+        name: internal.name,
+        shortName: internal.shortName,
+        description: internal.description,
+        combatText: internal.combatText,
+        ruleHooks: internal.ruleHooks
+      })) : state.player.internals
     },
     run: {
       floorIndex: state.run.floorIndex,
@@ -53,8 +62,26 @@ window.render_game_to_text = () => {
         id: move.id,
         name: move.name,
         damage: state.estimateDamage(move),
-        fallback: Boolean(move.fallback)
+        fallback: Boolean(move.fallback),
+        damageSummary: state.getDamageSummary ? state.getDamageSummary(move) : null
       } : null,
+      playableMoves: playableMoves.map((hint) => ({
+        id: hint.id,
+        name: hint.name,
+        input: hint.input,
+        damage: hint.damage,
+        cardUids: hint.cardUids
+      })),
+      basicPlayableMove: basicPlayableMove ? {
+        id: basicPlayableMove.id,
+        name: basicPlayableMove.name,
+        input: basicPlayableMove.input,
+        damage: basicPlayableMove.damage,
+        cardUids: basicPlayableMove.cardUids
+      } : null,
+      internalTrigger: battle.internalTrigger,
+      internalTriggerTimer: battle.internalTriggerTimer,
+      lastDamageSummary: battle.damageSummary,
       enemy: enemy ? {
         id: enemy.id,
         name: enemy.name,
@@ -124,6 +151,46 @@ function dispatchPreviewAction(action) {
   refreshDevPanel();
 }
 
+function selectBattleHudPreviewCards() {
+  const battle = game.state.battle;
+  if (!battle) return;
+
+  if (!battle.hand.some((card) => {
+    const fragment = game.state.fragmentMap[card.id];
+    return fragment && fragment.type === "attack";
+  })) {
+    const attackIndex = battle.drawPile.findIndex((card) => {
+      const fragment = game.state.fragmentMap[card.id];
+      return fragment && fragment.type === "attack";
+    });
+    if (attackIndex >= 0) {
+      battle.hand.push(battle.drawPile.splice(attackIndex, 1)[0]);
+    }
+  }
+
+  const playable = game.state.getPlayableMoveHints ? game.state.getPlayableMoveHints()[0] : null;
+  const cardUids = playable && playable.cardUids.length > 0
+    ? playable.cardUids
+    : battle.hand
+      .filter((card) => {
+        const fragment = game.state.fragmentMap[card.id];
+        return fragment && fragment.type === "attack";
+      })
+      .slice(0, 1)
+      .map((card) => card.uid);
+  battle.selected = [];
+  cardUids.forEach((uid) => game.state.selectHandCard(uid));
+}
+
+function applyPreviewMode() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("mode") !== "battle-hud") return;
+  game.dispatch("startRun");
+  game.dispatch("enterNode");
+  selectBattleHudPreviewCards();
+  game.renderer.render();
+}
+
 document.querySelectorAll("[data-dev-action]").forEach((button) => {
   button.addEventListener("click", () => {
     dispatchPreviewAction(button.dataset.devAction);
@@ -131,4 +198,5 @@ document.querySelectorAll("[data-dev-action]").forEach((button) => {
 });
 
 game.start();
+applyPreviewMode();
 setTimeout(refreshDevPanel, 0);
