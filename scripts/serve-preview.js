@@ -22,7 +22,10 @@ const types = {
 };
 
 function send(res, status, body, type) {
-  res.writeHead(status, { "Content-Type": type || "text/plain; charset=utf-8" });
+  res.writeHead(status, {
+    "Content-Type": type || "text/plain; charset=utf-8",
+    "Cache-Control": "no-store, max-age=0"
+  });
   res.end(body);
 }
 

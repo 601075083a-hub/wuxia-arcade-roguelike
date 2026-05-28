@@ -273,6 +273,8 @@ class GameState {
 
     const damage = this.estimateDamage(move);
     this.damageEnemy(damage);
+    this.battle.flash = 14;
+    this.battle.lastDamage = damage;
     move.effects.forEach((effect) => {
       if (effect.type === "block") this.player.block += this.applyBonusBlock(move, effect.value);
       if (effect.type === "poison") this.battle.enemy.poison += effect.value;

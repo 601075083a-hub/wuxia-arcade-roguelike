@@ -15,14 +15,24 @@
         width: 100%;
         height: 100%;
         margin: 0;
-        overflow: hidden;
+        overflow: auto;
         background: #16110e;
+        color: #f7e6bd;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       body {
+        min-height: 100%;
         display: grid;
         place-items: center;
+        padding: 20px;
+      }
+
+      .preview-shell {
+        display: grid;
+        grid-template-columns: minmax(320px, 390px) minmax(280px, 360px);
+        gap: 18px;
+        align-items: center;
       }
 
       .phone {
@@ -44,6 +54,7 @@
       }
 
       .hint {
+        display: none;
         position: absolute;
         left: 14px;
         right: 14px;
@@ -56,13 +67,122 @@
         text-align: center;
         pointer-events: none;
       }
+
+      .dev-panel {
+        width: 100%;
+        max-height: min(844px, calc(100vh - 40px));
+        overflow: hidden;
+        border: 1px solid rgba(214, 168, 73, 0.42);
+        border-radius: 14px;
+        background: rgba(28, 20, 15, 0.92);
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+      }
+
+      .dev-panel__header {
+        padding: 14px 16px 10px;
+        border-bottom: 1px solid rgba(214, 168, 73, 0.2);
+      }
+
+      .dev-panel__title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffe39a;
+      }
+
+      .dev-panel__subtitle {
+        margin: 6px 0 0;
+        color: rgba(247, 230, 189, 0.72);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .dev-panel__actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .dev-panel button {
+        min-height: 38px;
+        border: 1px solid rgba(255, 225, 150, 0.7);
+        border-radius: 8px;
+        background: #c89537;
+        color: #21150c;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .dev-panel button:hover {
+        background: #ddb44f;
+      }
+
+      .dev-panel button:active {
+        transform: translateY(1px);
+      }
+
+      .dev-panel__state {
+        height: 470px;
+        margin: 0 12px 12px;
+        padding: 12px;
+        overflow: auto;
+        border-radius: 10px;
+        background: rgba(7, 10, 10, 0.72);
+        color: #dfead0;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        white-space: pre-wrap;
+      }
+
+      @media (max-width: 760px) {
+        body {
+          align-items: start;
+          padding: 10px;
+        }
+
+        .preview-shell {
+          grid-template-columns: minmax(300px, 390px);
+        }
+
+        .phone {
+          width: min(390px, calc(100vw - 20px));
+          height: min(844px, calc((100vw - 20px) * 844 / 390));
+        }
+
+        .dev-panel {
+          max-height: none;
+        }
+
+        .dev-panel__state {
+          height: 260px;
+        }
+      }
     </style>
   </head>
   <body>
-    <main class="phone">
-      <canvas id="gameCanvas"></canvas>
-      <div class="hint">浏览器预览版 · 点击交互</div>
-    </main>
+    <div class="preview-shell">
+      <main class="phone">
+        <canvas id="gameCanvas"></canvas>
+        <div class="hint">浏览器预览版 · 点击交互</div>
+      </main>
+      <aside class="dev-panel" aria-label="预览验收面板">
+        <div class="dev-panel__header">
+          <h1 class="dev-panel__title">预览验收面板</h1>
+          <p class="dev-panel__subtitle">用于快速检查开始、进战斗、选牌、出招和回合结束。</p>
+        </div>
+        <div class="dev-panel__actions">
+          <button type="button" data-dev-action="refresh">刷新状态</button>
+          <button type="button" data-dev-action="start">开始闯荡</button>
+          <button type="button" data-dev-action="enter">进入当前节点</button>
+          <button type="button" data-dev-action="selectAttack">选第一张攻击牌</button>
+          <button type="button" data-dev-action="cast">出招</button>
+          <button type="button" data-dev-action="endTurn">回合结束</button>
+        </div>
+        <pre id="devState" class="dev-panel__state">等待游戏启动...</pre>
+      </aside>
+    </div>
     <script src="/preview/bundle.js"></script>
   </body>
 </html>

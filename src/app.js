@@ -43,9 +43,18 @@ class WuxiaGame {
         if (touch) this.handleTouch(touch.clientX, touch.clientY);
       });
     } else if (this.canvas && this.canvas.addEventListener) {
-      this.canvas.addEventListener("click", (event) => {
-        this.handleTouch(event.clientX, event.clientY);
-      });
+      let lastPointerTime = 0;
+      const handleCanvasEvent = (event) => {
+        if (event.type === "click" && Date.now() - lastPointerTime < 350) return;
+        if (event.type === "pointerdown" || event.type === "touchstart") lastPointerTime = Date.now();
+        const source = event.touches && event.touches[0] ? event.touches[0] : event;
+        const rect = this.canvas.getBoundingClientRect ? this.canvas.getBoundingClientRect() : { left: 0, top: 0 };
+        this.handleTouch(source.clientX - rect.left, source.clientY - rect.top);
+        if (event.cancelable) event.preventDefault();
+      };
+      this.canvas.addEventListener("pointerdown", handleCanvasEvent);
+      this.canvas.addEventListener("touchstart", handleCanvasEvent, { passive: false });
+      this.canvas.addEventListener("click", handleCanvasEvent);
     }
   }
 

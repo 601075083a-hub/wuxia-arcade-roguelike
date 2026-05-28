@@ -29,7 +29,126 @@ const game = new WuxiaGame(canvas, ctx, {
 });
 
 window.__wuxiaPreviewGame = game;
+window.render_game_to_text = () => {
+  const state = game.state;
+  const battle = state.battle;
+  const move = battle ? state.getCurrentMove() : null;
+  const enemy = battle && battle.enemy ? battle.enemy : null;
+  const payload = {
+    coordinateSystem: "design canvas 390x844, origin top-left, x right, y down",
+    scene: state.scene,
+    message: state.message,
+    player: {
+      hp: state.player.hp,
+      maxHp: state.player.maxHp,
+      block: state.player.block,
+      gold: state.player.gold,
+      poison: state.player.poison,
+      externals: state.player.externals,
+      internals: state.player.internals
+    },
+    run: {
+      floorIndex: state.run.floorIndex,
+      nodeIndex: state.run.nodeIndex,
+      lastNode: state.run.lastNode ? state.run.lastNode.type : null
+    },
+    battle: battle ? {
+      turn: battle.turn,
+      actionsLeft: battle.actionsLeft,
+      hand: battle.hand.map((card) => ({
+        uid: card.uid,
+        id: card.id,
+        name: state.fragmentMap[card.id] ? state.fragmentMap[card.id].name : card.id,
+        type: state.fragmentMap[card.id] ? state.fragmentMap[card.id].type : "unknown"
+      })),
+      selected: battle.selected.map((card) => ({
+        uid: card.uid,
+        id: card.id,
+        name: state.fragmentMap[card.id] ? state.fragmentMap[card.id].name : card.id
+      })),
+      currentMove: move ? {
+        id: move.id,
+        name: move.name,
+        damage: state.estimateDamage(move),
+        fallback: Boolean(move.fallback)
+      } : null,
+      enemy: enemy ? {
+        id: enemy.id,
+        name: enemy.name,
+        hp: enemy.hp,
+        maxHp: enemy.maxHp,
+        block: enemy.block,
+        intent: enemy.intents[enemy.intentIndex % enemy.intents.length]
+      } : null
+    } : null,
+    hits: game.renderer.hits.map((hit) => ({
+      action: hit.action,
+      payload: hit.payload,
+      x: Math.round(hit.x),
+      y: Math.round(hit.y),
+      w: Math.round(hit.w),
+      h: Math.round(hit.h)
+    }))
+  };
+  return JSON.stringify(payload);
+};
+window.advanceTime = (ms) => {
+  game.renderer.render();
+  return window.render_game_to_text();
+};
+
+function formatPreviewState() {
+  const payload = JSON.parse(window.render_game_to_text());
+  return JSON.stringify(payload, null, 2);
+}
+
+function refreshDevPanel() {
+  const output = document.getElementById("devState");
+  if (!output) return;
+  try {
+    output.textContent = formatPreviewState();
+  } catch (error) {
+    output.textContent = `状态读取失败：${error.message}`;
+  }
+}
+
+function dispatchPreviewAction(action) {
+  if (action === "refresh") {
+    refreshDevPanel();
+    return;
+  }
+  if (action === "start") {
+    game.dispatch("startRun");
+  }
+  if (action === "enter") {
+    game.dispatch("enterNode");
+  }
+  if (action === "selectAttack") {
+    const battle = game.state.battle;
+    const attackCard = battle && battle.hand.find((card) => {
+      const fragment = game.state.fragmentMap[card.id];
+      return fragment && fragment.type === "attack";
+    });
+    if (attackCard) game.dispatch("selectHandCard", attackCard.uid);
+  }
+  if (action === "cast") {
+    game.dispatch("castMove");
+  }
+  if (action === "endTurn") {
+    game.dispatch("endTurn");
+  }
+  game.renderer.render();
+  refreshDevPanel();
+}
+
+document.querySelectorAll("[data-dev-action]").forEach((button) => {
+  button.addEventListener("click", () => {
+    dispatchPreviewAction(button.dataset.devAction);
+  });
+});
+
 game.start();
+setTimeout(refreshDevPanel, 0);
 
 }, {"../src/app":"src/app.js"}],
 "src/app.js": [function(require, module, exports) {
@@ -78,9 +197,18 @@ class WuxiaGame {
         if (touch) this.handleTouch(touch.clientX, touch.clientY);
       });
     } else if (this.canvas && this.canvas.addEventListener) {
-      this.canvas.addEventListener("click", (event) => {
-        this.handleTouch(event.clientX, event.clientY);
-      });
+      let lastPointerTime = 0;
+      const handleCanvasEvent = (event) => {
+        if (event.type === "click" && Date.now() - lastPointerTime < 350) return;
+        if (event.type === "pointerdown" || event.type === "touchstart") lastPointerTime = Date.now();
+        const source = event.touches && event.touches[0] ? event.touches[0] : event;
+        const rect = this.canvas.getBoundingClientRect ? this.canvas.getBoundingClientRect() : { left: 0, top: 0 };
+        this.handleTouch(source.clientX - rect.left, source.clientY - rect.top);
+        if (event.cancelable) event.preventDefault();
+      };
+      this.canvas.addEventListener("pointerdown", handleCanvasEvent);
+      this.canvas.addEventListener("touchstart", handleCanvasEvent, { passive: false });
+      this.canvas.addEventListener("click", handleCanvasEvent);
     }
   }
 
@@ -392,6 +520,8 @@ class GameState {
 
     const damage = this.estimateDamage(move);
     this.damageEnemy(damage);
+    this.battle.flash = 14;
+    this.battle.lastDamage = damage;
     move.effects.forEach((effect) => {
       if (effect.type === "block") this.player.block += this.applyBonusBlock(move, effect.value);
       if (effect.type === "poison") this.battle.enemy.poison += effect.value;
@@ -717,6 +847,18 @@ function drawText(ctx, text, x, y, size, color, align) {
   ctx.fillText(text, x, y);
 }
 
+function drawOutlinedText(ctx, text, x, y, size, color, stroke, align) {
+  ctx.font = `${size}px sans-serif`;
+  ctx.textAlign = align || "left";
+  ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = Math.max(2, Math.round(size * 0.12));
+  ctx.strokeStyle = stroke;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
 function drawButton(ctx, box, label, enabled) {
   roundRect(ctx, box.x, box.y, box.w, box.h, 12);
   ctx.fillStyle = enabled === false ? "#463b31" : "#d7a849";
@@ -877,6 +1019,25 @@ function makeRenderer(canvas, ctx, state, assets) {
       }
     },
 
+    drawAssetContain(key, x, y, w, h) {
+      const image = assets && assets.get ? assets.get(key) : null;
+      if (!image) return false;
+      const imageW = image.width || image.naturalWidth || w;
+      const imageH = image.height || image.naturalHeight || h;
+      if (!imageW || !imageH) return this.drawAsset(key, x, y, w, h);
+      const scale = Math.min(w / imageW, h / imageH);
+      const drawW = imageW * scale;
+      const drawH = imageH * scale;
+      const drawX = x + (w - drawW) / 2;
+      const drawY = y + (h - drawH) / 2;
+      try {
+        ctx.drawImage(image, drawX, drawY, drawW, drawH);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    },
+
     render() {
       this.clear();
       if (state.scene === "title") this.drawTitle();
@@ -931,6 +1092,7 @@ function makeRenderer(canvas, ctx, state, assets) {
       const enemy = battle.enemy;
       this.drawBattleBackdrop();
       this.drawFighters();
+      this.drawBattleFeedback();
       this.drawEnemyBattleHud(enemy);
       this.drawComboPanel();
       this.drawHand();
@@ -939,17 +1101,23 @@ function makeRenderer(canvas, ctx, state, assets) {
 
     drawBattleBackdrop() {
       if (assets && assets.get && assets.get("battleBackground")) {
-        ctx.fillStyle = "rgba(22,12,8,0.18)";
+        ctx.fillStyle = "rgba(4,8,10,0.44)";
         ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
       }
-      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      const bottomShade = ctx.createLinearGradient(0, 250, 0, DESIGN_HEIGHT);
+      bottomShade.addColorStop(0, "rgba(5,10,12,0)");
+      bottomShade.addColorStop(0.68, "rgba(8,12,12,0.34)");
+      bottomShade.addColorStop(1, "rgba(10,6,4,0.78)");
+      ctx.fillStyle = bottomShade;
+      ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+      ctx.fillStyle = "rgba(235,245,220,0.16)";
       ctx.beginPath();
-      ctx.ellipse(195, 388, 170, 42, 0, 0, Math.PI * 2);
+      ctx.ellipse(195, 390, 144, 34, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,221,126,0.65)";
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255,221,126,0.58)";
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(195, 432, 138, Math.PI * 0.1, Math.PI * 1.85);
+      ctx.arc(195, 420, 126, Math.PI * 0.1, Math.PI * 1.85);
       ctx.stroke();
     },
 
@@ -971,29 +1139,50 @@ function makeRenderer(canvas, ctx, state, assets) {
     },
 
     drawPlayerBottomHud() {
-      roundRect(ctx, 16, 704, 210, 34, 12);
+      roundRect(ctx, 18, 724, 206, 32, 12);
       ctx.fillStyle = "rgba(26,18,13,0.82)";
       ctx.fill();
       ctx.strokeStyle = "#8d6a37";
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      drawText(ctx, "少侠", 36, 721, 12, "#fff3c4");
+      drawText(ctx, "少侠", 36, 740, 12, "#fff3c4");
       ctx.fillStyle = "#3b1b13";
-      ctx.fillRect(76, 715, 94, 11);
+      ctx.fillRect(76, 734, 94, 10);
       ctx.fillStyle = "#e44f2f";
-      ctx.fillRect(76, 715, Math.max(0, 94 * state.player.hp / state.player.maxHp), 11);
-      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 123, 720, 8, "#fff", "center");
-      drawText(ctx, `甲 ${state.player.block}`, 198, 721, 11, "#bfe1ff", "center");
-      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 198, 733, 10, "#b6e889", "center");
+      ctx.fillRect(76, 734, Math.max(0, 94 * state.player.hp / state.player.maxHp), 10);
+      drawText(ctx, `${state.player.hp}/${state.player.maxHp}`, 123, 739, 8, "#fff", "center");
+      drawText(ctx, `甲 ${state.player.block}`, 198, 740, 11, "#bfe1ff", "center");
+      if (state.player.poison > 0) drawText(ctx, `毒 ${state.player.poison}`, 198, 752, 10, "#b6e889", "center");
     },
 
     drawFighters() {
-      if (this.drawAsset("enemy", 130, 134, 130, 170)) {
-        this.drawAsset("player", 70, 300, 250, 330);
-        return;
+      const enemyDrawn = this.drawAssetContain("enemy", 108, 122, 174, 200);
+      const playerDrawn = this.drawAssetContain("player", 64, 282, 262, 300);
+      if (!enemyDrawn) this.drawPaintedEnemy();
+      if (!playerDrawn) this.drawPaintedPlayer();
+    },
+
+    drawBattleFeedback() {
+      const battle = state.battle;
+      if (!battle || !battle.flash) return;
+      const alpha = Math.min(0.72, battle.flash / 14);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = "#ffe082";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(126, 234);
+      ctx.quadraticCurveTo(190, 168, 266, 222);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255, 226, 128, 0.24)";
+      ctx.beginPath();
+      ctx.ellipse(195, 224, 82, 28, -0.18, 0, Math.PI * 2);
+      ctx.fill();
+      if (battle.lastDamage) {
+        drawOutlinedText(ctx, `-${battle.lastDamage}`, 195, 172, 24, "#ffe082", "rgba(41,18,8,0.85)", "center");
       }
-      this.drawPaintedEnemy();
-      this.drawPaintedPlayer();
+      ctx.restore();
+      battle.flash = Math.max(0, battle.flash - 1);
     },
 
     drawPaintedEnemy() {
@@ -1092,39 +1281,64 @@ function makeRenderer(canvas, ctx, state, assets) {
       const battle = state.battle;
       const selected = battle.selected;
       const move = state.getCurrentMove();
-      if (!this.drawAsset("panel", 22, 515, 346, 63)) {
-        roundRect(ctx, 22, 515, 346, 58, 10);
-        ctx.fillStyle = "rgba(31,20,12,0.92)";
-        ctx.fill();
-        ctx.strokeStyle = "#b07a3b";
-        ctx.stroke();
-      }
+      const panel = { x: 20, y: 492, w: 254, h: 82 };
+      roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 12);
+      ctx.fillStyle = "rgba(14,18,17,0.9)";
+      ctx.fill();
+      ctx.strokeStyle = "#b88945";
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
       const sequence = selected.map((card) => state.fragmentMap[card.id].label).join(" ");
-      const title = move ? `${move.name}  ${sequence}` : sequence || "选择手牌碎片开始搓招";
-      drawText(ctx, title, 195, 538, 20, move ? "#ffe79b" : "#cdbb93", "center");
-      drawText(ctx, move ? `预计伤害 ${state.estimateDamage(move)}` : "命中配方后可出招", 195, 562, 13, "#d6c299", "center");
-      selected.forEach((card, index) => {
-        this.addHit({ x: 28 + index * 44, y: 518, w: 38, h: 50 }, "unselectCard", card.uid);
-      });
-      const castBox = { x: 286, y: 456, w: 76, h: 42 };
+      const title = move ? move.name : selected.length > 0 ? "已选序列" : "选择手牌碎片开始搓招";
+      drawText(ctx, title, 147, 513, 17, move ? "#ffe79b" : "#cdbb93", "center");
+      if (selected.length > 0) {
+        const tokenW = 28;
+        const tokenGap = 6;
+        const total = selected.length * tokenW + Math.max(0, selected.length - 1) * tokenGap;
+        const startX = 147 - total / 2;
+        selected.forEach((card, index) => {
+          const tokenX = startX + index * (tokenW + tokenGap);
+          const tokenY = 527;
+          roundRect(ctx, tokenX, tokenY, tokenW, 24, 8);
+          ctx.fillStyle = "rgba(216,168,73,0.24)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,226,154,0.78)";
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          drawText(ctx, state.fragmentMap[card.id].label, tokenX + tokenW / 2, tokenY + 12, 15, "#ffe8a4", "center");
+          this.addHit({ x: tokenX, y: tokenY, w: tokenW, h: 24 }, "unselectCard", card.uid);
+        });
+      } else {
+        drawText(ctx, "点击手牌组成序列", 147, 538, 13, "#d6c299", "center");
+      }
+      drawText(ctx, move ? `预计伤害 ${state.estimateDamage(move)}` : selected.length > 0 ? sequence : "命中配方后可出招", 147, 560, 12, "#d6c299", "center");
+      const castBox = { x: 288, y: 506, w: 76, h: 56 };
       drawButton(ctx, castBox, "出招", Boolean(move));
-      this.addHit(castBox, "castMove");
+      if (move) this.addHit(castBox, "castMove");
     },
 
     drawHand() {
       const battle = state.battle;
-      const cardW = 56;
-      const gap = 7;
+      roundRect(ctx, 12, 580, 366, 136, 14);
+      ctx.fillStyle = "rgba(8,12,12,0.74)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(184,137,69,0.7)";
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      const handSize = battle.hand.length;
+      const cardW = handSize > 6 ? 46 : handSize > 5 ? 52 : 58;
+      const cardH = Math.round(cardW * 1.25);
+      const gap = handSize > 6 ? 5 : handSize > 5 ? 7 : 8;
       const total = battle.hand.length * cardW + Math.max(0, battle.hand.length - 1) * gap;
       const startX = (DESIGN_WIDTH - total) / 2;
       battle.hand.forEach((card, index) => {
         const fragment = state.fragmentMap[card.id];
         const selected = battle.selected.includes(card);
         const x = startX + index * (cardW + gap);
-        const y = selected ? 594 : 612;
+        const y = selected ? 596 : 610;
         const cardAsset = fragment.type === "direction" ? "cardDirection" : card.id === "punch" ? "cardPunch" : "cardKick";
-        if (!this.drawAsset(cardAsset, x, y, cardW, 112)) {
-          roundRect(ctx, x, y, cardW, 112, 8);
+        if (!this.drawAssetContain(cardAsset, x, y, cardW, cardH)) {
+          roundRect(ctx, x, y, cardW, cardH, 8);
           const cardGradient = ctx.createLinearGradient(x, y, x, y + 112);
           if (fragment.type === "direction") {
             cardGradient.addColorStop(0, "#f6f8c8");
@@ -1143,40 +1357,41 @@ function makeRenderer(canvas, ctx, state, assets) {
           ctx.stroke();
           ctx.strokeStyle = "rgba(255,255,255,0.45)";
           ctx.lineWidth = 1;
-          ctx.strokeRect(x + 6, y + 6, cardW - 12, 100);
+          ctx.strokeRect(x + 6, y + 6, cardW - 12, cardH - 12);
         } else if (selected) {
-          roundRect(ctx, x, y, cardW, 112, 8);
+          roundRect(ctx, x, y, cardW, cardH, 8);
           ctx.strokeStyle = "#fff3a0";
           ctx.lineWidth = 4;
           ctx.stroke();
         }
-        drawText(ctx, fragment.label, x + cardW / 2, y + 52, fragment.type === "attack" ? 28 : 36, "#1f1a12", "center");
-        drawText(ctx, fragment.name, x + cardW / 2, y + 88, 12, "#3c2b1f", "center");
-        this.addHit({ x, y, w: cardW, h: 112 }, "selectHandCard", card.uid);
+        drawOutlinedText(ctx, fragment.label, x + cardW / 2, y + cardH * 0.43, fragment.type === "attack" ? 24 : 28, "#21150d", "rgba(255,246,204,0.88)", "center");
+        drawOutlinedText(ctx, fragment.name, x + cardW / 2, y + cardH * 0.74, 10, "#2c2118", "rgba(255,246,204,0.78)", "center");
+        this.addHit({ x, y, w: cardW, h: cardH }, "selectHandCard", card.uid);
       });
     },
 
     drawBottomBar() {
       const battle = state.battle;
-      if (!this.drawAsset("controlBar", 0, 744, DESIGN_WIDTH, 110)) {
-        roundRect(ctx, 0, 744, DESIGN_WIDTH, 100, 0);
-        ctx.fillStyle = "rgba(28,18,12,0.96)";
-        ctx.fill();
-      }
+      roundRect(ctx, 0, 720, DESIGN_WIDTH, 124, 0);
+      ctx.fillStyle = "rgba(28,18,12,0.96)";
+      ctx.fill();
+      this.drawAssetContain("controlBar", 0, 782, DESIGN_WIDTH, 46);
+      ctx.fillStyle = "rgba(6,9,9,0.58)";
+      ctx.fillRect(0, 720, DESIGN_WIDTH, 124);
       this.drawPlayerBottomHud();
       drawText(ctx, "内功", 34, 774, 13, "#ccb47f", "center");
       state.player.internals.slice(0, 2).forEach((id, index) => {
         const internal = state.internalMap[id];
-        drawText(ctx, internal.name.slice(0, 3), 54 + index * 64, 814, 12, "#fff3c4", "center");
+        drawText(ctx, internal.name.slice(0, 3), 54 + index * 64, 802, 12, "#fff3c4", "center");
       });
-      roundRect(ctx, 150, 758, 78, 30, 12);
+      roundRect(ctx, 150, 768, 78, 30, 12);
       ctx.fillStyle = "#2a1d14";
       ctx.fill();
       ctx.strokeStyle = "#b88945";
       ctx.stroke();
-      drawText(ctx, `出招 ${battle.actionsLeft}/3`, 189, 773, 13, "#ffd45e", "center");
-      const clearBox = { x: 242, y: 756, w: 54, h: 38 };
-      const endBox = { x: 306, y: 756, w: 62, h: 38 };
+      drawText(ctx, `出招 ${battle.actionsLeft}/3`, 189, 783, 13, "#ffd45e", "center");
+      const clearBox = { x: 242, y: 764, w: 54, h: 40 };
+      const endBox = { x: 306, y: 764, w: 62, h: 40 };
       drawButton(ctx, clearBox, "清空", true);
       drawButton(ctx, endBox, "回合", true);
       this.addHit(clearBox, "clearSelection");
@@ -1250,7 +1465,7 @@ function makeRenderer(canvas, ctx, state, assets) {
 
     drawMessage() {
       const battleMode = state.scene === "battle";
-      const box = battleMode ? { x: 28, y: 474, w: 238, h: 28 } : { x: 18, y: 92, w: 354, h: 34 };
+      const box = battleMode ? { x: 32, y: 466, w: 232, h: 26 } : { x: 18, y: 92, w: 354, h: 34 };
       roundRect(ctx, box.x, box.y, box.w, box.h, 12);
       ctx.fillStyle = "rgba(26,18,13,0.68)";
       ctx.fill();
